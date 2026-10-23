@@ -64,3 +64,34 @@ Chunk sıraları: 0 = Giriş + Çalışma Saatleri, 1 = Çalışma Saatleri (dev
 - Önce **daha büyük bir model** (ör. `qwen3:4b` / `qwen3:8b`) ile aynı seti çalıştırıp karşılaştır. Bulguların çoğu modelin küçüklüğünden kaynaklanıyor.
 - Prompt versiyonları (2.2), açık "bilmiyorum" fallback'i (2.3) ve groundedness kontrolü (2.4), #13, #16 ve #17 tipi hataları hedeflemeli.
 - Retrieval için daha küçük ya da başlık bazlı chunk ve reranking denenebilir.
+
+---
+
+## Model ve prompt karşılaştırması
+
+Aynı 18 soru ile 8 konu dışı mesaj (selamlaşma, teşekkür, fıkra, hava, programlama, genel kültür) üç yapılandırmada çalıştırıldı. Retrieval üçünde de aynı; fark sadece LLM'de ve promptta.
+
+- **Mevcut prompt:** "Bağlama dayan, `[n]` ile atıf yap, bağlamda yoksa söyle."
+- **Kurallı prompt:** Selamlaşma, konu dışı, şirket sorusu ve "dokümanda yok" durumları için ayrı kurallar ve sabit cevap kalıpları.
+
+| Ölçüt | 1.7B + mevcut | 8B + mevcut | 8B + kurallı |
+| --- | --- | --- | --- |
+| Cevap içeriği doğru (18) | 12 (2 kısmen) | **17** | 16 (1 kısmen) |
+| Atıf doğru (doğru cevaplarda) | 9 / 14 | **13 / 13** | 12 / 13 |
+| Dokümanda yok → uydurmadı (4) | 2 | **4** | **4** (sabit kalıpla) |
+| Konu dışı mesajı doğru ele aldı (8) | 0–1 | 5 | **8** |
+| Ortalama süre (ilk soru hariç) | **1.6 sn** | 6.2 sn | 6.6 sn |
+| İlk soru (model yükleme) | 7.7 sn | 18.9 sn | 16.0 sn |
+
+### Notlar
+
+- **1.7B ile kurallı prompt denendi ve geri alındı.** Konu dışı mesajları reddetmeye başladı, ama "Kıdemim 7 yıl" sorusunda doğru cevap olan 20 gün yerine 14 gün dedi. Küçük model uzun talimatlarla çıkarım yeteneğini kaybediyor.
+- **1.7B ile LLM tabanlı niyet sınıflandırma:** 26 mesajın 10'u doğru. "Babalık izni" gibi meşru soruları "alakasız" saydı, kullanılamaz.
+- **Embedding tabanlı yönlendirme (LLM'siz):** 30 mesajın 28'i doğru, ama örnek cümleler test setini görerek yazıldığı için iyimser bir ölçüm. 8B ile kurallı prompt bu problemi zaten çözdüğü için şimdilik gerek yok; düşük gecikme ya da maliyet gerektiğinde tekrar değerlendirilebilir.
+- **8B + mevcut prompt** selamlaşmalara doğal karşılık veriyor ama gereksiz `[1]` ekliyor. Ayrıca "Türkiye'nin başkenti?" sorusunu kendi bilgisinden cevaplayıp bir de kaynak gösteriyor. Bu, olmayan bir kaynağa dayanıyormuş gibi yapmak demek.
+- **#1 "Standart çalışma saatleri"** her yapılandırmada yanlış, çünkü sorun retrieval'da: doğru chunk ilk 4'e girmiyor. 8B uydurmuyor, gelen bağlamdaki 07:30–10:00 bilgisini veriyor. Çözüm LLM tarafında değil, chunking ya da reranking tarafında.
+- **Kaynak kullanımı:** 8B, M4 / 16 GB RAM'de sorunsuz çalışıyor; diskte 5.2 GB. Hız 1.7B'ye göre ~4 kat yavaş.
+
+### Sonuç
+
+**8B + kurallı prompt** en dengeli seçenek. Doğruluk ve dürüstlük belirgin şekilde arttı, konu dışı mesajların hepsi doğru ele alındı. Bedeli soru başına ~5 saniyelik ek gecikme.

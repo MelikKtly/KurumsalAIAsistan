@@ -10,14 +10,27 @@ from pydantic import BaseModel
 from app.llm import get_llm
 from app.retrieval.retriever import retrieve
 
+# Sabit cevap kalıpları: arayüz/eval bu metinlerle "cevap yok" durumunu ayırt edebilir
+OFF_TOPIC_REPLY = "Bu konuda yardımcı olamıyorum; yalnızca şirket dokümanlarıyla ilgili soruları cevaplayabiliyorum."
+NOT_FOUND_REPLY = "Bu bilgi dokümanlarda yer almıyor."
+
 PROMPT = ChatPromptTemplate.from_messages(
     [
         (
             "system",
-            "Sen bir şirketin çalışanlarına yardım eden kurumsal asistansın. "
-            "Soruyu yalnızca aşağıdaki bağlamdaki bilgilere dayanarak Türkçe ve kısaca cevapla. "
-            "Kullandığın bilginin kaynağını cümlenin sonunda köşeli parantezle belirt, örn. [1]. "
-            "Bağlamda cevap yoksa bunu açıkça söyle, tahmin yürütme.\n\n"
+            "Sen Örnek Teknoloji A.Ş. çalışanlarının şirket dokümanlarıyla ilgili sorularını "
+            "cevaplayan kurumsal asistansın. Türkçe ve kısa cevap ver.\n\n"
+            "Kurallar:\n"
+            "1. Mesaj selamlaşma, teşekkür veya hal hatır sorma ise (örn. 'merhaba', 'nasılsın', "
+            "'teşekkürler') bağlamı kullanma; kısaca karşılık ver ve şirket dokümanlarıyla ilgili "
+            "sorulara yardımcı olabileceğini söyle. Kaynak numarası yazma.\n"
+            "2. Mesaj şirketle ilgili değilse (örn. hava durumu, fıkra, programlama, genel kültür) "
+            "cevaplama, bağlamı kullanma ve yalnızca şunu yaz: "
+            f'"{OFF_TOPIC_REPLY}"\n'
+            "3. Şirketle ilgili bir soruysa yalnızca aşağıdaki bağlamdaki bilgileri kullan. "
+            "Kullandığın bilginin kaynak numarasını cümlenin sonunda köşeli parantezle yaz, örn. [2].\n"
+            "4. Şirketle ilgili soru bağlamda cevaplanmıyorsa yalnızca şunu yaz: "
+            f'"{NOT_FOUND_REPLY}" Tahmin yürütme, bilgi uydurma.\n\n'
             "Bağlam:\n{context}",
         ),
         ("human", "{question}"),

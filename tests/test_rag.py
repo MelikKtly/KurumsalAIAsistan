@@ -7,7 +7,7 @@ from langchain_core.language_models import GenericFakeChatModel
 from langchain_core.messages import AIMessage
 
 from app.ingestion.pipeline import ingest_pdf
-from app.retrieval.rag import PROMPT, answer_question, format_context
+from app.retrieval.rag import NOT_FOUND_REPLY, OFF_TOPIC_REPLY, PROMPT, answer_question, format_context
 from app.vectorstore import get_vector_store
 
 SAMPLE_PDF = Path("data/samples/ornek_ik_el_kitabi.pdf")
@@ -50,3 +50,10 @@ def test_answer_question_returns_answer_and_sources(store):
     assert len(result.sources) == 4
     assert [s.ref for s in result.sources] == [1, 2, 3, 4]
     assert all(s.source == "ornek_ik_el_kitabi.pdf" and s.page >= 1 for s in result.sources)
+
+
+def test_prompt_contains_fixed_replies():
+    system = PROMPT.format_messages(context="", question="")[0].content
+    assert OFF_TOPIC_REPLY in system
+    assert NOT_FOUND_REPLY in system
+    assert "{context}" not in system  # şablon değişkeni doldurulmuş olmalı

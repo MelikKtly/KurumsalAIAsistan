@@ -111,6 +111,7 @@ Claude Code yeni bir oturumda bu konuşmanın geçmişini bilmiyor, o yüzden bu
 - [x] 8. Elle test — 18 soru, `scripts/manual_test.py`; sonuçlar [docs/faz1_elle_test.md](docs/faz1_elle_test.md): içerik 12/18 doğru, retrieval recall@4 13/14
 
 - [x] 9. *(Ek adım)* Sohbet arayüzü — `GET /`, tek dosya HTML/JS (`app/api/static/index.html`), `/ask`'i çağırır, tıklanabilir `[n]` atıfları ve kaynak kartları
+- [x] 10. *(Ek adım)* `qwen3:8b`'ye geçiş + kurallı prompt (selamlaşma / konu dışı / dokümanda yok için sabit cevaplar) — karşılaştırma: [docs/faz1_elle_test.md](docs/faz1_elle_test.md#model-ve-prompt-karşılaştırması)
 
 **Faz 1 tamamlandı (23 Ekim 2026).**
 
@@ -118,7 +119,7 @@ Claude Code yeni bir oturumda bu konuşmanın geçmişini bilmiyor, o yüzden bu
 
 | Konu | Karar | Neden |
 | --- | --- | --- |
-| LLM | Ollama, `qwen3:1.7b` | Ücretsiz, lokal, zaten kurulu. Gerekirse ileride Claude API'ye geçilebilir (LLM katmanı `.env` ile değiştirilebilir tutuluyor) |
+| LLM | Ollama, `qwen3:8b` (önce `qwen3:1.7b`) | Ücretsiz, lokal. 1.7B uyduruyor, atıfları karıştırıyor ve kurallı promptta çıkarımı bozuluyordu; 8B ile içerik doğruluğu 12→16/18, konu dışı mesajlar 0→8/8, ama ~4 kat yavaş (~6.6 sn). Gerekirse ileride Claude API'ye geçilebilir |
 | Embedding | `paraphrase-multilingual-MiniLM-L12-v2` | Lokal, ücretsiz, Türkçe destekli |
 | PDF okuma | `pypdf` (LangChain `PyPDFLoader` yerine) | `langchain-community` sunset edildi |
 | Frontend | FastAPI'nin sunduğu tek sayfa HTML/JS, kütüphanesiz | Odak backend+AI; ayrı frontend projesi gerektirmez, kendi API'mizi tüketir |
@@ -130,4 +131,6 @@ Claude Code yeni bir oturumda bu konuşmanın geçmişini bilmiyor, o yüzden bu
 - Retrieval zayıflığı: "Evden kaç gün çalışabilirim?" sorusunda Uzaktan Çalışma chunk'ı 2. sırada geldi → Faz 2+ reranking adayı.
 - Büyük chunk'lar konuları karıştırıyor: chunk 4 (Eğitim + Yan Haklar + Bilgi Güvenliği) şifre sorusunda 2. sırada kaldı → daha küçük chunk veya başlık bazlı bölme denenebilir.
 - Cevabı dokümanda olmayan soruda ("CEO kim?") en iyi uzaklık ~0.70, ilgili sorularda ~0.34–0.47 → Faz 2'deki "bilmiyorum" fallback'i için uzaklık eşiği adayı. **Güncelleme (8. adım):** Cevabı olan bazı sorularda da uzaklık 0.83–0.84 çıktı; eşik tek başına yetmez, groundedness kontrolü gerekli.
-- `qwen3:1.7b` cevap içeriğinde doğru, ama `[n]` atıflarında hatalı: "[K1]" gibi uydurma format veya yanlış numara ([2] yerine [4]). Soru başına ~7–16 sn. → Faz 2'de prompt iyileştirme ve/veya daha büyük model.
+- `qwen3:1.7b` cevap içeriğinde doğru, ama `[n]` atıflarında hatalı: "[K1]" gibi uydurma format veya yanlış numara ([2] yerine [4]). → **Çözüldü:** 8B'ye geçildi.
+- "Nasılsın?" gibi mesajlara doküman özeti dönüyordu → kurallı prompt ile çözüldü. Denenen alternatifler (1.7B ile LLM sınıflandırıcı: 10/26; embedding yönlendirici: 28/30) raporda.
+- "Standart çalışma saatleri" sorusunda doğru chunk ilk 4'e girmiyor (her modelde yanlış) → retrieval/chunking sorunu, Faz 2+.

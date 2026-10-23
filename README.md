@@ -17,7 +17,7 @@ Detaylı yol haritası: [PROJE_PLANI.md](PROJE_PLANI.md)
 ```bash
 uv sync
 cp .env.example .env
-ollama pull qwen3:1.7b   # ya da .env'deki LLM_MODEL
+ollama pull qwen3:8b   # ya da .env'deki LLM_MODEL (~5 GB)
 ```
 
 ## Çalıştırma
