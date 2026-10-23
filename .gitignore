@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+
+# Ortam
+.env
+
+# Veri
+data/chroma/
+data/pdfs/*
+!data/pdfs/.gitkeep
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
