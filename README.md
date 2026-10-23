@@ -41,5 +41,7 @@ app/
   api/         # FastAPI endpoint'leri
   config.py    # .env tabanlı ayarlar
 data/pdfs/     # Kaynak PDF'ler (git'e girmez)
+data/samples/  # Test için kurgusal örnek PDF (scripts/create_sample_pdf.py ile üretilir)
+scripts/       # Yardımcı betikler
 tests/
 ```
