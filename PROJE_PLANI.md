@@ -107,7 +107,7 @@ Claude Code yeni bir oturumda bu konuşmanın geçmişini bilmiyor, o yüzden bu
 - [x] 4. Embedding + Chroma — `scripts/ingest.py`, sabit chunk ID'leri ile tekrar yüklemede kopya oluşmaz
 - [x] 5. Retrieval — `app/retrieval/retriever.py`, cosine uzaklığı skoruyla top-k; `scripts/search.py` ile LLM'siz deneme
 - [x] 6. RAG chain — `app/retrieval/rag.py` (LCEL: prompt | ChatOllama | parser), numaralı context + `[n]` atıfları; `scripts/ask.py`
-- [ ] 7. `POST /ask`
+- [x] 7. `POST /ask` — `app/api/main.py`, Pydantic istek/cevap şeması, Ollama kapalıysa 503, testlerde dependency override
 - [ ] 8. Elle test
 
 ### Alınan kararlar

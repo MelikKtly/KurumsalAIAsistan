@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.161.1",
+    "httpx>=0.28.1",
     "langchain>=1.4.7",
     "langchain-chroma>=1.1.0",
     "langchain-huggingface>=1.2.3",
@@ -20,7 +21,6 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "httpx>=0.28.1",
     "pytest>=9.1.1",
     "reportlab>=5.1.0",
 ]
