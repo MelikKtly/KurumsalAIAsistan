@@ -108,7 +108,9 @@ Claude Code yeni bir oturumda bu konuşmanın geçmişini bilmiyor, o yüzden bu
 - [x] 5. Retrieval — `app/retrieval/retriever.py`, cosine uzaklığı skoruyla top-k; `scripts/search.py` ile LLM'siz deneme
 - [x] 6. RAG chain — `app/retrieval/rag.py` (LCEL: prompt | ChatOllama | parser), numaralı context + `[n]` atıfları; `scripts/ask.py`
 - [x] 7. `POST /ask` — `app/api/main.py`, Pydantic istek/cevap şeması, Ollama kapalıysa 503, testlerde dependency override
-- [ ] 8. Elle test
+- [x] 8. Elle test — 18 soru, `scripts/manual_test.py`; sonuçlar [docs/faz1_elle_test.md](docs/faz1_elle_test.md): içerik 12/18 doğru, retrieval recall@4 13/14
+
+**Faz 1 tamamlandı (23 Ekim 2026).**
 
 ### Alınan kararlar
 
@@ -124,5 +126,5 @@ Claude Code yeni bir oturumda bu konuşmanın geçmişini bilmiyor, o yüzden bu
 - Embedding modeli değişirse Chroma koleksiyonu baştan yeniden oluşturulmalı.
 - Retrieval zayıflığı: "Evden kaç gün çalışabilirim?" sorusunda Uzaktan Çalışma chunk'ı 2. sırada geldi → Faz 2+ reranking adayı.
 - Büyük chunk'lar konuları karıştırıyor: chunk 4 (Eğitim + Yan Haklar + Bilgi Güvenliği) şifre sorusunda 2. sırada kaldı → daha küçük chunk veya başlık bazlı bölme denenebilir.
-- Cevabı dokümanda olmayan soruda ("CEO kim?") en iyi uzaklık ~0.70, ilgili sorularda ~0.34–0.47 → Faz 2'deki "bilmiyorum" fallback'i için uzaklık eşiği adayı.
+- Cevabı dokümanda olmayan soruda ("CEO kim?") en iyi uzaklık ~0.70, ilgili sorularda ~0.34–0.47 → Faz 2'deki "bilmiyorum" fallback'i için uzaklık eşiği adayı. **Güncelleme (8. adım):** Cevabı olan bazı sorularda da uzaklık 0.83–0.84 çıktı; eşik tek başına yetmez, groundedness kontrolü gerekli.
 - `qwen3:1.7b` cevap içeriğinde doğru, ama `[n]` atıflarında hatalı: "[K1]" gibi uydurma format veya yanlış numara ([2] yerine [4]). Soru başına ~7–16 sn. → Faz 2'de prompt iyileştirme ve/veya daha büyük model.
