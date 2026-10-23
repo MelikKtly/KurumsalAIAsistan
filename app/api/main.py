@@ -1,7 +1,9 @@
+from pathlib import Path
 from typing import Annotated
 
 import httpx
 from fastapi import Depends, FastAPI, HTTPException
+from fastapi.responses import FileResponse
 from langchain_chroma import Chroma
 from langchain_core.language_models import BaseChatModel
 from pydantic import BaseModel, Field
@@ -11,6 +13,8 @@ from app.retrieval.rag import RAGAnswer, answer_question
 from app.vectorstore import get_vector_store
 
 app = FastAPI(title="Kurumsal AI Asistanı", version="0.1.0")
+
+INDEX_HTML = Path(__file__).parent / "static" / "index.html"
 
 
 class AskRequest(BaseModel):
@@ -24,6 +28,12 @@ def llm_dependency() -> BaseChatModel:
 
 def vector_store_dependency() -> Chroma:
     return get_vector_store()
+
+
+@app.get("/", include_in_schema=False)
+def index() -> FileResponse:
+    """Sohbet arayüzü."""
+    return FileResponse(INDEX_HTML)
 
 
 @app.get("/health")

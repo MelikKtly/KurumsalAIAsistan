@@ -54,3 +54,10 @@ def test_ask_returns_503_when_llm_unreachable(client):
     app.dependency_overrides[llm_dependency] = lambda: DownLLM(messages=iter([]))
     response = client.post("/ask", json={"question": "izin"})
     assert response.status_code == 503
+
+
+def test_index_serves_chat_ui(client):
+    response = client.get("/")
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/html")
+    assert "Kurumsal AI Asistanı" in response.text

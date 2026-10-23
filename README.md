@@ -30,7 +30,8 @@ uv run python -m scripts.ingest data/samples/ornek_ik_el_kitabi.pdf
 uv run uvicorn app.api.main:app --reload
 ```
 
-Swagger arayüzü: http://localhost:8000/docs
+- Sohbet arayüzü: http://localhost:8000/
+- Swagger (API dokümantasyonu): http://localhost:8000/docs
 
 ```bash
 curl -X POST localhost:8000/ask -H 'Content-Type: application/json' \
