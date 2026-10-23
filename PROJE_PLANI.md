@@ -105,7 +105,7 @@ Claude Code yeni bir oturumda bu konuşmanın geçmişini bilmiyor, o yüzden bu
 - [x] 2. PDF yükleme — `app/ingestion/loader.py` (doğrudan `pypdf`), test için kurgusal İK el kitabı (`data/samples/`)
 - [x] 3. Chunking — `RecursiveCharacterTextSplitter`, 1000 karakter / 150 örtüşme
 - [x] 4. Embedding + Chroma — `scripts/ingest.py`, sabit chunk ID'leri ile tekrar yüklemede kopya oluşmaz
-- [ ] 5. Retrieval
+- [x] 5. Retrieval — `app/retrieval/retriever.py`, cosine uzaklığı skoruyla top-k; `scripts/search.py` ile LLM'siz deneme
 - [ ] 6. RAG chain
 - [ ] 7. `POST /ask`
 - [ ] 8. Elle test
@@ -123,3 +123,5 @@ Claude Code yeni bir oturumda bu konuşmanın geçmişini bilmiyor, o yüzden bu
 
 - Embedding modeli değişirse Chroma koleksiyonu baştan yeniden oluşturulmalı.
 - Retrieval zayıflığı: "Evden kaç gün çalışabilirim?" sorusunda Uzaktan Çalışma chunk'ı 2. sırada geldi → Faz 2+ reranking adayı.
+- Büyük chunk'lar konuları karıştırıyor: chunk 4 (Eğitim + Yan Haklar + Bilgi Güvenliği) şifre sorusunda 2. sırada kaldı → daha küçük chunk veya başlık bazlı bölme denenebilir.
+- Cevabı dokümanda olmayan soruda ("CEO kim?") en iyi uzaklık ~0.70, ilgili sorularda ~0.34–0.47 → Faz 2'deki "bilmiyorum" fallback'i için uzaklık eşiği adayı.
