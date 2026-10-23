@@ -43,6 +43,51 @@ Küçültülmüş kapsam: tek veri kaynağı (PDF), basit bir uçtan uca RAG ak�
 
 Bu sekiz adım bitince elinde zaten çalışan, gösterilebilir bir RAG sistemi var. Reranking, çoklu kaynak ve eval katmanı sonraki iterasyonlarda eklenir.
 
+## Faz 2 — Kalite Katmanı (Detaylı Adımlar)
+
+Faz 1'deki RAG çekirdeğini güvenilirlik ve ölçülebilirlik tarafıyla güçlendiriyoruz.
+
+1. Sistem promptunu ayrı bir dosyada toplayıp LangChain `PromptTemplate` ile yapılandır — kod içine gömülmüş string olmasın
+2. En az iki farklı prompt versiyonu yaz, aynı sorularda karşılaştır (örn. "sadece context'e dayan" talimatı olan/olmayan)
+3. "Bilmiyorum" fallback'i ekle: context'te cevap yoksa model uydurmasın, bunu açıkça söylesin
+4. Groundedness kontrolü: üretilen cevabı kullanılan context'le karşılaştırıp "bu cevap context'e dayanıyor mu" diye ikinci bir LLM çağrısıyla doğrula
+5. Her isteğin latency ve token sayısını logla
+6. Token sayısı × model fiyatından yaklaşık maliyeti hesapla, her istekle birlikte kaydet
+7. (Opsiyonel) LangSmith'e bağlan, trace'leri orada incele
+8. 10-15 soruluk küçük bir "golden set" oluştur, cevapları elle değerlendirip bir doğruluk notu tut — Faz 4'teki otomatik eval'in temeli olacak
+
+Bu faz bitince sisteminin ne kadar güvenilir, ne kadar hızlı ve ne kadara mal olduğunu ölçebiliyorsun.
+
+## Faz 3 — Agent Katmanı (Detaylı Adımlar)
+
+Artık statik soru-cevaptan çıkıp modele araç kullandırıp çok adımlı görevler yaptırıyoruz.
+
+1. İlk aracı tanımla: Faz 1'deki vektör arama fonksiyonunu bir "tool" olarak sar
+2. Claude'un function calling özelliğiyle tek bir aracı çağırabilen basit bir agent yaz (henüz LangGraph yok, tek adımlı tool-use)
+3. İkinci bir araç ekle (örn. bir REST API çağrısı) — modelin iki araç arasında doğru seçim yapıp yapmadığını gözlemle
+4. LangGraph'a geç: basit bir state machine kur (plan → tool çağır → sonucu değerlendir → bitir ya da tekrar et)
+5. Çok adımlı bir görev senaryosu tasarla (örn. "dokümanlardan bilgi bul, başka bir kaynaktan veri çek, ikisini karşılaştırıp özetle") ve agent'ın adım adım çözmesini sağla
+6. Her adımı logla (hangi tool çağrıldı, hangi girdiyle, ne sonuç döndü) — debug ve eval için şart
+7. Basit bir "supervisor + tek worker" multi-agent denemesi yap, aynı görevi tek-agent versiyonuyla karşılaştır
+8. Başarısız/döngüye giren senaryoları not et, agent'a maksimum adım limiti koy
+
+Bu faz bitince modelin sadece soru cevaplamadığı, görev planlayıp araç kullanarak iş yaptığı çalışan bir agent sistemin var.
+
+## Faz 4 — Servis ve Test (Detaylı Adımlar)
+
+Artık tüm parçaları gerçek, test edilebilir bir servise dönüştürüyoruz.
+
+1. FastAPI üzerinden üç endpoint aç: `/ask` (RAG), `/agent` (agent görevi), `/health`
+2. PostgreSQL ekle: sorgu geçmişini, kullanılan tool'ları, maliyet/latency metriklerini kaydet
+3. SQL ve vektör DB'yi aynı sistemde birlikte kullan (örn. text-to-SQL aracı Postgres'e, retrieval aracı Chroma'ya gidiyor)
+4. Yapılandırılmış logging ekle (JSON formatlı loglar, log seviyeleri)
+5. pytest ile temel testler yaz: retrieval doğru chunk'ı buluyor mu, agent doğru tool'u seçiyor mu (mock LLM yanıtlarıyla)
+6. Faz 2'deki golden set'i otomatik çalıştıran bir eval scripti yaz, GitHub Actions'a ekle
+7. Docker Compose ile tüm sistemi (FastAPI + Postgres + Chroma) tek komutla ayağa kaldır
+8. README yaz: mimari diyagram, kurulum adımları, örnek istek/cevap, ölçülmüş sonuçlar (latency, maliyet, golden set doğruluk oranı)
+
+Bu faz bitince elinde demo değil, kurulumu, testi ve dokümantasyonu olan, CV'ye konabilecek tam bir servis var.
+
 ## Claude Code ile Devam Etme Notları
 
 Claude Code yeni bir oturumda bu konuşmanın geçmişini bilmiyor, o yüzden bu döküman onunla aran daki bağlantı görevi görüyor.
@@ -51,3 +96,30 @@ Claude Code yeni bir oturumda bu konuşmanın geçmişini bilmiyor, o yüzden bu
 - Faz 1'i bitirmeden Faz 2'ye geçmeye çalışma — her faz kendi başına bir checkpoint
 - Bir adımda takılırsan, o adımı daha küçük parçalara böl (örn. "chunking çalışıyor mu" ayrı bir test adımı olabilir)
 - İlerledikçe bu dokümanı güncelleyelim: hangi faz bitti, hangi kararlar alındı, neyin değiştirildiği buraya eklenebilir
+
+## İlerleme ve Kararlar
+
+### Faz 1 durumu
+
+- [x] 1. Proje iskeleti — `uv` + Python 3.12, `app/{ingestion,retrieval,api}`, `.env` tabanlı ayarlar (`app/config.py`)
+- [x] 2. PDF yükleme — `app/ingestion/loader.py` (doğrudan `pypdf`), test için kurgusal İK el kitabı (`data/samples/`)
+- [x] 3. Chunking — `RecursiveCharacterTextSplitter`, 1000 karakter / 150 örtüşme
+- [x] 4. Embedding + Chroma — `scripts/ingest.py`, sabit chunk ID'leri ile tekrar yüklemede kopya oluşmaz
+- [ ] 5. Retrieval
+- [ ] 6. RAG chain
+- [ ] 7. `POST /ask`
+- [ ] 8. Elle test
+
+### Alınan kararlar
+
+| Konu | Karar | Neden |
+| --- | --- | --- |
+| LLM | Ollama, `qwen3:1.7b` | Ücretsiz, lokal, zaten kurulu. Gerekirse ileride Claude API'ye geçilebilir (LLM katmanı `.env` ile değiştirilebilir tutuluyor) |
+| Embedding | `paraphrase-multilingual-MiniLM-L12-v2` | Lokal, ücretsiz, Türkçe destekli |
+| PDF okuma | `pypdf` (LangChain `PyPDFLoader` yerine) | `langchain-community` sunset edildi |
+| Gerçek PDF'ler | `data/pdfs/` git'e girmez | Kurumsal belgeler repoya sızmasın |
+
+### Notlar
+
+- Embedding modeli değişirse Chroma koleksiyonu baştan yeniden oluşturulmalı.
+- Retrieval zayıflığı: "Evden kaç gün çalışabilirim?" sorusunda Uzaktan Çalışma chunk'ı 2. sırada geldi → Faz 2+ reranking adayı.
