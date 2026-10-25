@@ -9,6 +9,9 @@ class Settings(BaseSettings):
     ollama_base_url: str = "http://localhost:11434"
     llm_model: str = "qwen3:8b"
 
+    # app/prompts/rag/<versiyon>.yaml
+    rag_prompt_version: str = "v2"
+
     embedding_model: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 
     chroma_dir: str = "data/chroma"

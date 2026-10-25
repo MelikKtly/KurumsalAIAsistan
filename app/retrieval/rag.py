@@ -3,39 +3,13 @@ from pathlib import Path
 from langchain_core.documents import Document
 from langchain_core.language_models import BaseChatModel
 from langchain_core.output_parsers import StrOutputParser
-from langchain_core.prompts import ChatPromptTemplate
 from langchain_chroma import Chroma
 from pydantic import BaseModel
 
+from app.config import get_settings
 from app.llm import get_llm
+from app.prompts.loader import PromptSpec, load_prompt
 from app.retrieval.retriever import retrieve
-
-# Sabit cevap kalıpları: arayüz/eval bu metinlerle "cevap yok" durumunu ayırt edebilir
-OFF_TOPIC_REPLY = "Bu konuda yardımcı olamıyorum; yalnızca şirket dokümanlarıyla ilgili soruları cevaplayabiliyorum."
-NOT_FOUND_REPLY = "Bu bilgi dokümanlarda yer almıyor."
-
-PROMPT = ChatPromptTemplate.from_messages(
-    [
-        (
-            "system",
-            "Sen Örnek Teknoloji A.Ş. çalışanlarının şirket dokümanlarıyla ilgili sorularını "
-            "cevaplayan kurumsal asistansın. Türkçe ve kısa cevap ver.\n\n"
-            "Kurallar:\n"
-            "1. Mesaj selamlaşma, teşekkür veya hal hatır sorma ise (örn. 'merhaba', 'nasılsın', "
-            "'teşekkürler') bağlamı kullanma; kısaca karşılık ver ve şirket dokümanlarıyla ilgili "
-            "sorulara yardımcı olabileceğini söyle. Kaynak numarası yazma.\n"
-            "2. Mesaj şirketle ilgili değilse (örn. hava durumu, fıkra, programlama, genel kültür) "
-            "cevaplama, bağlamı kullanma ve yalnızca şunu yaz: "
-            f'"{OFF_TOPIC_REPLY}"\n'
-            "3. Şirketle ilgili bir soruysa yalnızca aşağıdaki bağlamdaki bilgileri kullan. "
-            "Kullandığın bilginin kaynak numarasını cümlenin sonunda köşeli parantezle yaz, örn. [2].\n"
-            "4. Şirketle ilgili soru bağlamda cevaplanmıyorsa yalnızca şunu yaz: "
-            f'"{NOT_FOUND_REPLY}" Tahmin yürütme, bilgi uydurma.\n\n'
-            "Bağlam:\n{context}",
-        ),
-        ("human", "{question}"),
-    ]
-)
 
 
 class Source(BaseModel):
@@ -51,6 +25,7 @@ class RAGAnswer(BaseModel):
     question: str
     answer: str
     sources: list[Source]
+    prompt_version: str
 
 
 def format_context(documents: list[Document]) -> str:
@@ -76,13 +51,29 @@ def to_sources(documents: list[Document]) -> list[Source]:
     ]
 
 
+def get_rag_prompt() -> PromptSpec:
+    """`.env`'deki RAG_PROMPT_VERSION'a göre aktif RAG promptu."""
+    return load_prompt("rag", get_settings().rag_prompt_version)
+
+
 def answer_question(
     question: str,
     llm: BaseChatModel | None = None,
     vector_store: Chroma | None = None,
+    prompt: PromptSpec | None = None,
 ) -> RAGAnswer:
-    """Soruya ilgili chunk'ları bulup LLM ile kaynaklı cevap üretir."""
+    """Soruya ilgili chunk'ları bulup LLM ile kaynaklı cevap üretir.
+
+    `prompt` verilmezse aktif versiyon kullanılır; karşılaştırma için farklı bir
+    versiyon geçilebilir.
+    """
+    prompt = prompt or get_rag_prompt()
     documents = retrieve(question, vector_store=vector_store)
-    chain = PROMPT | (llm or get_llm()) | StrOutputParser()
+    chain = prompt.template | (llm or get_llm()) | StrOutputParser()
     answer = chain.invoke({"context": format_context(documents), "question": question})
-    return RAGAnswer(question=question, answer=answer.strip(), sources=to_sources(documents))
+    return RAGAnswer(
+        question=question,
+        answer=answer.strip(),
+        sources=to_sources(documents),
+        prompt_version=prompt.version,
+    )

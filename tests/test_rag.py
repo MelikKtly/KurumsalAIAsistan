@@ -7,7 +7,8 @@ from langchain_core.language_models import GenericFakeChatModel
 from langchain_core.messages import AIMessage
 
 from app.ingestion.pipeline import ingest_pdf
-from app.retrieval.rag import NOT_FOUND_REPLY, OFF_TOPIC_REPLY, PROMPT, answer_question, format_context
+from app.prompts.loader import load_prompt
+from app.retrieval.rag import answer_question, format_context
 from app.vectorstore import get_vector_store
 
 SAMPLE_PDF = Path("data/samples/ornek_ik_el_kitabi.pdf")
@@ -38,22 +39,16 @@ def test_format_context_numbers_chunks_with_page():
     assert "[2] (a.pdf, sayfa 3)\nikinci" in context
 
 
-def test_prompt_contains_context_and_question():
-    messages = PROMPT.format_messages(context="BAĞLAM-METNİ", question="SORU-METNİ")
-    assert "BAĞLAM-METNİ" in messages[0].content
-    assert messages[1].content == "SORU-METNİ"
-
-
 def test_answer_question_returns_answer_and_sources(store):
     result = answer_question("Yıllık izin kaç gün?", llm=fake_llm("  14 iş günü [1]  "), vector_store=store)
     assert result.answer == "14 iş günü [1]"
     assert len(result.sources) == 4
     assert [s.ref for s in result.sources] == [1, 2, 3, 4]
     assert all(s.source == "ornek_ik_el_kitabi.pdf" and s.page >= 1 for s in result.sources)
+    assert result.prompt_version == "v2"
 
 
-def test_prompt_contains_fixed_replies():
-    system = PROMPT.format_messages(context="", question="")[0].content
-    assert OFF_TOPIC_REPLY in system
-    assert NOT_FOUND_REPLY in system
-    assert "{context}" not in system  # şablon değişkeni doldurulmuş olmalı
+def test_answer_question_accepts_prompt_version(store):
+    result = answer_question("izin", llm=fake_llm("cevap"), vector_store=store, prompt=load_prompt("rag", "v1"))
+    assert result.prompt_version == "v1"
+

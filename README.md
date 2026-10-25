@@ -68,6 +68,7 @@ app/
   ingestion/   # PDF yükleme, chunking, embedding, Chroma'ya yazma
   retrieval/   # Arama ve RAG chain
   api/         # FastAPI endpoint'leri
+  prompts/     # Versiyonlu prompt dosyaları (rag/v1.yaml, rag/v2.yaml)
   config.py    # .env tabanlı ayarlar
 data/pdfs/     # Kaynak PDF'ler (git'e girmez)
 data/samples/  # Test için kurgusal örnek PDF (scripts/create_sample_pdf.py ile üretilir)

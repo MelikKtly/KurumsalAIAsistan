@@ -115,6 +115,17 @@ Claude Code yeni bir oturumda bu konuşmanın geçmişini bilmiyor, o yüzden bu
 
 **Faz 1 tamamlandı (23 Ekim 2026).**
 
+### Faz 2 durumu
+
+- [x] 1. Prompt ayrı dosyada — `app/prompts/rag/<versiyon>.yaml`, `app/prompts/loader.py` ile `ChatPromptTemplate`'e çevrilir; değişken uyuşmazlığında hata verir. Aktif versiyon `.env`'de `RAG_PROMPT_VERSION`; cevapta `prompt_version` döner. v1 = Faz 1.6 sade prompt, v2 = Faz 1.10 kurallı prompt
+- [ ] 2. Prompt versiyonlarını karşılaştırma
+- [ ] 3. "Bilmiyorum" fallback'i
+- [ ] 4. Groundedness kontrolü
+- [ ] 5. Latency + token loglama
+- [ ] 6. Maliyet hesabı
+- [ ] 7. (Opsiyonel) LangSmith
+- [ ] 8. Golden set
+
 ### Alınan kararlar
 
 | Konu | Karar | Neden |
@@ -122,6 +133,7 @@ Claude Code yeni bir oturumda bu konuşmanın geçmişini bilmiyor, o yüzden bu
 | LLM | Ollama, `qwen3:8b` (önce `qwen3:1.7b`) | Ücretsiz, lokal. 1.7B uyduruyor, atıfları karıştırıyor ve kurallı promptta çıkarımı bozuluyordu; 8B ile içerik doğruluğu 12→16/18, konu dışı mesajlar 0→8/8, ama ~4 kat yavaş (~6.6 sn). Gerekirse ileride Claude API'ye geçilebilir |
 | Embedding | `paraphrase-multilingual-MiniLM-L12-v2` | Lokal, ücretsiz, Türkçe destekli |
 | PDF okuma | `pypdf` (LangChain `PyPDFLoader` yerine) | `langchain-community` sunset edildi |
+| Prompt yönetimi | Versiyonlu YAML dosyaları (`app/prompts/`) | Çok satırlı metin okunaklı; açıklama ve sabit cevaplar aynı dosyada; versiyonlar kod değişmeden `.env` ile seçilir ve karşılaştırılabilir |
 | Frontend | FastAPI'nin sunduğu tek sayfa HTML/JS, kütüphanesiz | Odak backend+AI; ayrı frontend projesi gerektirmez, kendi API'mizi tüketir |
 | Gerçek PDF'ler | `data/pdfs/` git'e girmez | Kurumsal belgeler repoya sızmasın |
 
