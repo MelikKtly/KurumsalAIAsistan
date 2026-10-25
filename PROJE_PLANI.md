@@ -108,7 +108,7 @@ Claude Code yeni bir oturumda bu konuşmanın geçmişini bilmiyor, o yüzden bu
 - [x] 5. Retrieval — `app/retrieval/retriever.py`, cosine uzaklığı skoruyla top-k; `scripts/search.py` ile LLM'siz deneme
 - [x] 6. RAG chain — `app/retrieval/rag.py` (LCEL: prompt | ChatOllama | parser), numaralı context + `[n]` atıfları; `scripts/ask.py`
 - [x] 7. `POST /ask` — `app/api/main.py`, Pydantic istek/cevap şeması, Ollama kapalıysa 503, testlerde dependency override
-- [x] 8. Elle test — 18 soru, `scripts/manual_test.py`; sonuçlar [docs/faz1_elle_test.md](docs/faz1_elle_test.md): içerik 12/18 doğru, retrieval recall@4 13/14
+- [x] 8. Elle test — 18 soru (sonradan `data/eval/questions.yaml`'a taşındı); sonuçlar [docs/faz1_elle_test.md](docs/faz1_elle_test.md): içerik 12/18 doğru, retrieval recall@4 13/14
 
 - [x] 9. *(Ek adım)* Sohbet arayüzü — `GET /`, tek dosya HTML/JS (`app/api/static/index.html`), `/ask`'i çağırır, tıklanabilir `[n]` atıfları ve kaynak kartları
 - [x] 10. *(Ek adım)* `qwen3:8b`'ye geçiş + kurallı prompt (selamlaşma / konu dışı / dokümanda yok için sabit cevaplar) — karşılaştırma: [docs/faz1_elle_test.md](docs/faz1_elle_test.md#model-ve-prompt-karşılaştırması)
@@ -118,7 +118,7 @@ Claude Code yeni bir oturumda bu konuşmanın geçmişini bilmiyor, o yüzden bu
 ### Faz 2 durumu
 
 - [x] 1. Prompt ayrı dosyada — `app/prompts/rag/<versiyon>.yaml`, `app/prompts/loader.py` ile `ChatPromptTemplate`'e çevrilir; değişken uyuşmazlığında hata verir. Aktif versiyon `.env`'de `RAG_PROMPT_VERSION`; cevapta `prompt_version` döner. v1 = Faz 1.6 sade prompt, v2 = Faz 1.10 kurallı prompt
-- [ ] 2. Prompt versiyonlarını karşılaştırma
+- [x] 2. Prompt versiyonlarını karşılaştırma — `scripts/eval_prompts.py`, 29 soruluk set (`data/eval/questions.yaml`), kural tabanlı puanlama (`app/evaluation/scoring.py`). Sonuç [docs/prompt_karsilastirma.md](docs/prompt_karsilastirma.md): v1 %76, v2 %97 (şirket sorularında eşit; fark selamlaşma/konu dışında)
 - [ ] 3. "Bilmiyorum" fallback'i
 - [ ] 4. Groundedness kontrolü
 - [ ] 5. Latency + token loglama

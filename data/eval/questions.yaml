@@ -1,0 +1,187 @@
+# Değerlendirme soru seti — data/samples/ornek_ik_el_kitabi.pdf için.
+#
+# Alanlar:
+#   category:       dogrudan | cikarim | yok | sohbet | alakasiz
+#   expected:       İnsan için beklenen cevap (raporda gösterilir)
+#   must_contain:   Cevapta geçmesi gereken ifadeler. Hepsi aranır; "a|b" = a veya b.
+#                   Büyük/küçük harf duyarsız. Sadece dogrudan/cikarim için.
+#   expected_chunk: Cevabın bulunduğu chunk_id (retrieval ve atıf kontrolü için)
+#
+# Beklenen davranış kategoriye göre:
+#   dogrudan/cikarim → must_contain sağlanmalı, atıf geçerli olmalı
+#   yok              → ret (refusal_markers'dan biri), atıf olmamalı
+#   sohbet           → ret olmamalı, atıf olmamalı
+#   alakasiz         → ret, atıf olmamalı
+
+# "Bilgi yok / cevaplayamam" anlamına gelen ifadeler (v1'in serbest metni + v2'nin sabit cevapları)
+refusal_markers:
+  - yer almıyor
+  - yer almamaktadır
+  - yer almamış          # "yer almamıştır"
+  - belirtilmemiş
+  - bulunmamaktadır
+  - bulunmuyor
+  - bilgi yok
+  - yardımcı olamıyorum
+  - cevaplayamıyorum
+
+questions:
+  # --- Doğrudan bilgi ---
+  - id: d01
+    category: dogrudan
+    question: Standart çalışma saatleri nedir?
+    expected: Hafta içi 09:00–18:00
+    must_contain: ["09:00", "18:00"]
+    expected_chunk: 0
+  - id: d02
+    category: dogrudan
+    question: Fazla mesai ücreti nasıl hesaplanır?
+    expected: Saatlik ücretin %50 fazlası, yönetici yazılı onayıyla
+    must_contain: ["50", "fazlası|%50 fazla"]
+    expected_chunk: 1
+  - id: d03
+    category: dogrudan
+    question: Uzaktan çalışanlara internet desteği ne kadar?
+    expected: Aylık 1.500 TL
+    must_contain: ["1.500"]
+    expected_chunk: 1
+  - id: d04
+    category: dogrudan
+    question: Babalık izni kaç gün?
+    expected: 10 gün
+    must_contain: ["10 gün"]
+    expected_chunk: 2
+  - id: d05
+    category: dogrudan
+    question: Yurt içinde konaklama için gecelik limit nedir?
+    expected: 4.000 TL
+    must_contain: ["4.000"]
+    expected_chunk: 3
+  - id: d06
+    category: dogrudan
+    question: Yıllık eğitim bütçem ne kadar?
+    expected: 15.000 TL
+    must_contain: ["15.000"]
+    expected_chunk: 4
+  - id: d07
+    category: dogrudan
+    question: Spor salonu için destek var mı?
+    expected: Aylık 1.000 TL'ye kadar
+    must_contain: ["1.000"]
+    expected_chunk: 4
+  - id: d08
+    category: dogrudan
+    question: Şifrem en az kaç karakter olmalı?
+    expected: En az 12 karakter
+    must_contain: ["12"]
+    expected_chunk: 4
+  - id: d09
+    category: dogrudan
+    question: Yurt dışında yemek harcırahı ne kadar?
+    expected: 75 Euro
+    must_contain: ["75"]
+    expected_chunk: 3
+
+  # --- Çıkarım gerektiren ---
+  - id: c01
+    category: cikarim
+    question: Mesaiye en geç saat kaçta başlayabilirim?
+    expected: "10:00"
+    must_contain: ["10:00|10.00"]
+    expected_chunk: 0
+  - id: c02
+    category: cikarim
+    question: Kıdemim 3 yıl, kaç gün yıllık iznim var?
+    expected: 14 iş günü
+    must_contain: ["14"]
+    expected_chunk: 2
+  - id: c03
+    category: cikarim
+    question: Kıdemim 7 yıl, kaç gün yıllık iznim var?
+    expected: 20 iş günü
+    must_contain: ["20"]
+    expected_chunk: 2
+  - id: c04
+    category: cikarim
+    question: 3 gün hasta olursam doktor raporu gerekir mi?
+    expected: Evet, 2 günü aşan izinlerde zorunlu
+    must_contain: ["evet|zorunlu|gerekir"]
+    expected_chunk: 2
+  - id: c05
+    category: cikarim
+    question: 6.000 TL'lik bir harcama için onay almam gerekir mi?
+    expected: Evet, departman direktöründen önceden
+    must_contain: ["direktör"]
+    expected_chunk: 3
+  - id: c06
+    category: cikarim
+    question: 12.000 TL'lik bir sertifikayı şirket ödedi, bitirince hemen ayrılabilir miyim?
+    expected: Hayır, en az 1 yıl çalışma taahhüdü var
+    must_contain: ["hayır|ayrılamaz", "1 yıl|bir yıl"]
+    expected_chunk: 4
+  - id: c07
+    category: cikarim
+    question: Hangi günler ofiste olmam gerekiyor?
+    expected: Salı ve Perşembe
+    must_contain: ["salı", "perşembe"]
+    expected_chunk: 1
+  - id: c08
+    category: cikarim
+    question: Evden haftada kaç gün çalışabilirim?
+    expected: En fazla 3 gün
+    must_contain: ["3 gün"]
+    expected_chunk: 1
+
+  # --- Dokümanda yok ---
+  - id: y01
+    category: yok
+    question: Şirketin CEO'su kim?
+    expected: Dokümanda yok
+  - id: y02
+    category: yok
+    question: Maaş zamları hangi ay yapılıyor?
+    expected: Dokümanda yok
+  - id: y03
+    category: yok
+    question: Şirket araba veriyor mu?
+    expected: Dokümanda yok
+  - id: y04
+    category: yok
+    question: Ankara ofisinin adresi nedir?
+    expected: Ankara'da şube var, adres dokümanda yok
+
+  # --- Selamlaşma / sohbet ---
+  - id: s01
+    category: sohbet
+    question: Nasılsın?
+    expected: Kısa karşılık + yönlendirme
+  - id: s02
+    category: sohbet
+    question: Merhaba
+    expected: Kısa karşılık + yönlendirme
+  - id: s03
+    category: sohbet
+    question: Teşekkürler
+    expected: Kısa karşılık
+  - id: s04
+    category: sohbet
+    question: Günaydın, iyi çalışmalar
+    expected: Kısa karşılık
+
+  # --- Şirketle alakasız ---
+  - id: a01
+    category: alakasiz
+    question: Bana bir fıkra anlat
+    expected: Ret
+  - id: a02
+    category: alakasiz
+    question: Python'da liste nasıl sıralanır?
+    expected: Ret
+  - id: a03
+    category: alakasiz
+    question: Bugün hava nasıl?
+    expected: Ret
+  - id: a04
+    category: alakasiz
+    question: Türkiye'nin başkenti neresi?
+    expected: Ret

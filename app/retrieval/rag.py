@@ -56,6 +56,21 @@ def get_rag_prompt() -> PromptSpec:
     return load_prompt("rag", get_settings().rag_prompt_version)
 
 
+def generate_answer(
+    question: str,
+    documents: list[Document],
+    llm: BaseChatModel | None = None,
+    prompt: PromptSpec | None = None,
+) -> str:
+    """Verilen chunk'larla (retrieval yapmadan) cevap üretir.
+
+    Aynı chunk'ları farklı prompt/model ile denemek için ayrı tutuldu.
+    """
+    prompt = prompt or get_rag_prompt()
+    chain = prompt.template | (llm or get_llm()) | StrOutputParser()
+    return chain.invoke({"context": format_context(documents), "question": question}).strip()
+
+
 def answer_question(
     question: str,
     llm: BaseChatModel | None = None,
@@ -69,11 +84,9 @@ def answer_question(
     """
     prompt = prompt or get_rag_prompt()
     documents = retrieve(question, vector_store=vector_store)
-    chain = prompt.template | (llm or get_llm()) | StrOutputParser()
-    answer = chain.invoke({"context": format_context(documents), "question": question})
     return RAGAnswer(
         question=question,
-        answer=answer.strip(),
+        answer=generate_answer(question, documents, llm=llm, prompt=prompt),
         sources=to_sources(documents),
         prompt_version=prompt.version,
     )

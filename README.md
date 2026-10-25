@@ -55,6 +55,12 @@ uv run python -m scripts.search "soru"   # sadece retrieval
 uv run python -m scripts.ask "soru"      # retrieval + LLM
 ```
 
+Prompt versiyonlarını soru setinde karşılaştırmak (rapor `docs/`'a yazılır):
+
+```bash
+uv run python -m scripts.eval_prompts --versions v1 v2
+```
+
 ## Test
 
 ```bash
@@ -68,9 +74,11 @@ app/
   ingestion/   # PDF yükleme, chunking, embedding, Chroma'ya yazma
   retrieval/   # Arama ve RAG chain
   api/         # FastAPI endpoint'leri
+  evaluation/  # Cevapların kural tabanlı puanlanması
   prompts/     # Versiyonlu prompt dosyaları (rag/v1.yaml, rag/v2.yaml)
   config.py    # .env tabanlı ayarlar
 data/pdfs/     # Kaynak PDF'ler (git'e girmez)
+data/eval/     # Değerlendirme soru seti (questions.yaml)
 data/samples/  # Test için kurgusal örnek PDF (scripts/create_sample_pdf.py ile üretilir)
 scripts/       # Yardımcı betikler
 tests/

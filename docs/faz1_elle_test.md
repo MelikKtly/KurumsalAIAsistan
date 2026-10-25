@@ -3,7 +3,7 @@
 **Tarih:** 23 Ekim 2026
 **Doküman:** `data/samples/ornek_ik_el_kitabi.pdf` (3 sayfa → 5 chunk)
 **Ayarlar:** LLM `qwen3:1.7b` (Ollama, temperature=0), embedding `paraphrase-multilingual-MiniLM-L12-v2`, chunk 1000/150, top_k=4
-**Yeniden çalıştırmak için:** `uv run python -m scripts.manual_test sonuclar.json`
+**Yeniden çalıştırmak için:** O zamanki `scripts/manual_test.py` Faz 2.2'de kaldırıldı; sorular `data/eval/questions.yaml`'a taşındı → `uv run python -m scripts.eval_prompts --versions v1`
 
 ## Özet
 
