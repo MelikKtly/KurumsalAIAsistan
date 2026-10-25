@@ -22,6 +22,7 @@ from app.prompts.loader import available_versions, load_prompt
 from app.retrieval.rag import generate_answer
 from app.retrieval.retriever import retrieve
 
+# Rapor tablolarında kategori kodlarının (YAML'daki) okunur adları
 CATEGORY_NAMES = {
     "dogrudan": "Doğrudan bilgi",
     "cikarim": "Çıkarım",
@@ -32,22 +33,31 @@ CATEGORY_NAMES = {
 
 
 def run(versions: list[str], questions_path: str) -> tuple[list[dict], dict]:
+    """Her soruyu her prompt versiyonuyla çalıştırıp puanlar.
+
+    Dönüş: (satırlar, meta). Her satır = bir soru + her versiyonun cevabı/süresi/puanı.
+    """
     eval_set = load_eval_set(questions_path)
+    # Promptlar döngüden önce bir kez yüklenir (ve dosya hataları en başta yakalanır)
     prompts = {v: load_prompt("rag", v) for v in versions}
     rows = []
     for q in eval_set.questions:
+        # Retrieval soru başına BİR kez: aynı chunk'lar tüm versiyonlara verilir,
+        # böylece sonuç farkı yalnızca prompttan kaynaklanır (adil karşılaştırma).
         documents = retrieve(q.question)
         chunks = [d.metadata["chunk_id"] for d in documents]
         row = {"q": q, "chunks": chunks, "results": {}}
         for v, prompt in prompts.items():
-            start = time.perf_counter()
+            start = time.perf_counter()  # Süre sadece LLM üretimini ölçer (retrieval hariç)
             answer = generate_answer(q.question, documents, prompt=prompt)
             seconds = time.perf_counter() - start
             score = score_answer(q, answer, chunks, eval_set.refusal_markers)
             row["results"][v] = {"answer": answer, "seconds": seconds, "score": score}
             mark = "✅" if score.passed else f"❌ {score.reason}"
+            # Uzun süren çalıştırmada ilerlemeyi canlı görmek için her sonucu yazdır
             print(f"[{v} {seconds:4.1f} sn] {q.id} {q.question[:50]:50} {mark}")
         rows.append(row)
+    # Raporun başına yazılacak bilgiler: sonuç hangi model/ayarlarla üretildi (tekrar üretilebilirlik)
     meta = {
         "llm": get_settings().llm_model,
         "embedding": get_settings().embedding_model,
@@ -59,23 +69,31 @@ def run(versions: list[str], questions_path: str) -> tuple[list[dict], dict]:
 
 
 def pct(n: int, d: int) -> str:
+    """Oranı "8/9 (%89)" biçiminde yazar; payda 0 ise "—"."""
     return f"{n}/{d} (%{round(100 * n / d)})" if d else "—"
 
 
 def cell(text: str, limit: int = 140) -> str:
+    """Metni Markdown tablo hücresine uygun hale getirir."""
+    # Satır sonları tabloyu bozar → tek satıra indir; "|" sütun ayracıdır → kaçış karakteriyle yaz
     text = " ".join(text.split()).replace("|", "\\|")
+    # Çok uzun cevapları kısalt ki tablo okunabilir kalsın
     return text if len(text) <= limit else text[: limit - 1] + "…"
 
 
 def summarize(rows: list[dict], version: str) -> dict:
+    """Bir versiyonun tüm sorulardaki sonuçlarını özet metriklere indirger."""
+    # Her soru için (kategori, puan, süre) üçlüsü
     scores: list[tuple[str, Score, float]] = [
         (r["q"].category, r["results"][version]["score"], r["results"][version]["seconds"]) for r in rows
     ]
+    # Kategori başına [geçen, toplam]; defaultdict sayesinde ilk görülen kategori otomatik [0, 0] başlar
     by_cat = defaultdict(lambda: [0, 0])
     for cat, s, _ in scores:
-        by_cat[cat][0] += s.passed
+        by_cat[cat][0] += s.passed  # bool toplanabilir: True=1, False=0
         by_cat[cat][1] += 1
     answerable = [s for c, s, _ in scores if c in ANSWERABLE]
+    # "Doğru chunk'a atıf" sadece doğru chunk getirildiyse ölçülebilir (getirilmediyse None)
     with_chunk = [s for s in answerable if s.cited_expected_chunk is not None]
     times = [t for _, _, t in scores]
     return {
@@ -89,7 +107,9 @@ def summarize(rows: list[dict], version: str) -> dict:
 
 
 def write_report(rows: list[dict], meta: dict, versions: list[str], out: Path) -> None:
+    """Sonuçları Markdown rapor olarak yazar: başlık bilgileri, özet tablo, soru bazında tablo."""
     summaries = {v: summarize(rows, v) for v in versions}
+    # Tablo başlığı versiyon sayısına göre dinamik: "| Ölçüt | v1 | v2 |" + ayraç satırı
     header = "| Ölçüt | " + " | ".join(versions) + " |\n| --- |" + " --- |" * len(versions)
     lines = [
         "# Prompt Versiyonları Karşılaştırması",
@@ -129,16 +149,19 @@ def write_report(rows: list[dict], meta: dict, versions: list[str], out: Path) -
         + " |\n| --- | --- | --- | --- |"
         + " --- |" * len(versions),
     ]
+    # Soru bazında tablo: her versiyon için ✅/❌ + sebep + kısaltılmış cevap
     for r in rows:
         q = r["q"]
+        # Retrieval tüm versiyonlarda aynı olduğu için sıra ilk versiyonun puanından okunabilir
         rank = r["results"][versions[0]]["score"].retrieval_rank
+        # "—": soru için beklenen chunk yok (yok/sohbet/alakasiz); "❌ yok": chunk ilk k'ya girmedi
         rank_txt = "—" if q.expected_chunk is None else (str(rank) if rank else "❌ yok")
         cells = []
         for v in versions:
             res = r["results"][v]
             s = res["score"]
             mark = "✅" if s.passed else f"❌ *{s.reason}*"
-            cells.append(f"{mark}<br>{cell(res['answer'])}")
+            cells.append(f"{mark}<br>{cell(res['answer'])}")  # <br>: hücre içinde satır atlama
         lines.append(f"| {q.id} | {cell(q.question, 60)} | {cell(q.expected, 40)} | {rank_txt} | " + " | ".join(cells) + " |")
 
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -147,6 +170,7 @@ def write_report(rows: list[dict], meta: dict, versions: list[str], out: Path) -
 
 
 def main() -> None:
+    # Komut satırı argümanları; --help ile modül açıklaması (__doc__) gösterilir
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--versions", nargs="+", default=available_versions("rag"))
     parser.add_argument("--questions", default="data/eval/questions.yaml")
@@ -156,6 +180,8 @@ def main() -> None:
 
     rows, meta = run(args.versions, args.questions)
     write_report(rows, meta, args.versions, Path(args.out))
+    # İstenirse ham sonuçlar (tam cevaplar, tüm puan alanları) JSON olarak da kaydedilir;
+    # rapordaki kısaltılmış cevapların ötesinde detaylı inceleme için
     if args.json:
         raw = [
             {

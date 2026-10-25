@@ -1,5 +1,7 @@
 """Soruyu RAG chain ile cevaplar (retrieval + Ollama).
 
+API'yi başlatmadan uçtan uca akışı komut satırından denemek için.
+
 Kullanım:
     uv run python -m scripts.ask "Yurt dışında yemek harcırahı ne kadar?"
 """
@@ -11,9 +13,11 @@ from app.retrieval.rag import answer_question
 
 
 def main(question: str) -> None:
+    # perf_counter: süre ölçümü için yüksek çözünürlüklü saat
     start = time.perf_counter()
     result = answer_question(question)
     print(f"CEVAP ({time.perf_counter() - start:.1f} sn):\n{result.answer}\n\nKAYNAKLAR:")
+    # Cevaptaki [n] atıflarının hangi dosya/sayfaya karşılık geldiğini göster
     for s in result.sources:
         print(f"  [{s.ref}] {s.source}, sayfa {s.page} (uzaklık {s.score:.3f})")
 
