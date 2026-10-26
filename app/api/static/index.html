@@ -58,6 +58,11 @@
   .source.hl { background: var(--highlight); }
   .source b { color: var(--accent); }
   .source .snippet { color: var(--muted); margin-top: 4px; white-space: pre-wrap; }
+  /* Bulunan ama cevapta atıf yapılmayan kaynaklar: soluk göster (şeffaflık için listede kalıyor) */
+  .source.uncited { opacity: .55; }
+  .source .tag { color: var(--muted); font-size: 12px; }
+  /* "Bilgi yok" / konu dışı cevaplar: normal cevaptan ayırt edilsin diye kesikli çerçeve */
+  .msg.bot.fallback { border-style: dashed; color: var(--muted); }
   .typing { color: var(--muted); font-style: italic; }
   form {
     border-top: 1px solid var(--border); background: var(--panel); padding: 12px 16px;
@@ -154,15 +159,19 @@
   function renderSources(container, sources, answerId) {
     const details = el("details", "sources");
     details.id = `sources-${answerId}`;
-    details.appendChild(el("summary", null, `Kaynaklar (${sources.length})`));
-    for (const s of sources) {
-      const card = el("div", "source");
+    // Atıf yapılan kaynaklar başta; sort kararlı olduğu için kendi içlerinde retrieval sırası korunur
+    const ordered = [...sources].sort((a, b) => Number(b.cited) - Number(a.cited));
+    const citedCount = sources.filter((s) => s.cited).length;
+    details.appendChild(el("summary", null, `Kaynaklar (${citedCount} kullanıldı, ${sources.length} bulundu)`));
+    for (const s of ordered) {
+      const card = el("div", s.cited ? "source" : "source uncited");
       card.id = `src-${answerId}-${s.ref}`;
       const head = el("div");
       head.appendChild(el("b", null, `[${s.ref}] `));
       head.appendChild(document.createTextNode(
         `${s.source} · sayfa ${s.page} · benzerlik ${(1 - s.score).toFixed(2)}`
       ));
+      if (!s.cited) head.appendChild(el("span", "tag", " · cevapta kullanılmadı"));
       card.appendChild(head);
       card.appendChild(el("div", "snippet", s.snippet + "…"));
       details.appendChild(card);
@@ -192,10 +201,16 @@
       }
       const seconds = ((performance.now() - started) / 1000).toFixed(1);
       const answerId = ++counter;
-      const msg = el("div", "msg bot");
+      // answer_type'a göre görünüm (API: answered | not_found | off_topic | uncited)
+      const isFallback = body.answer_type === "not_found" || body.answer_type === "off_topic";
+      const msg = el("div", isFallback ? "msg bot fallback" : "msg bot");
       renderAnswer(msg, body.answer, answerId);
       msg.appendChild(el("div", "meta", `${seconds} sn`));
-      renderSources(msg, body.sources, answerId);
+      // Kaynaklar sadece cevap gerçekten dokümanlara dayanıyorsa gösterilir. "Bilgi yok",
+      // konu dışı veya selamlaşma cevaplarının altında alakasız kaynak kartları yanıltıcı olur.
+      if (body.answer_type === "answered") {
+        renderSources(msg, body.sources, answerId);
+      }
       pending.replaceWith(msg);
       scroll.scrollTop = scroll.scrollHeight;
     } catch (err) {

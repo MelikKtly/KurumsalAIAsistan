@@ -6,6 +6,7 @@ cevaptaki [n] atıfının hangi dosya ve sayfadan geldiğini görebilir.
 """
 
 from pathlib import Path
+from typing import Literal
 
 from langchain_core.documents import Document
 from langchain_core.language_models import BaseChatModel
@@ -16,7 +17,17 @@ from pydantic import BaseModel
 from app.config import get_settings
 from app.llm import get_llm
 from app.prompts.loader import PromptSpec, load_prompt
+from app.retrieval.citations import extract_citations, valid_refs
 from app.retrieval.retriever import retrieve
+from app.text import normalize
+
+# Cevabın türü — arayüz ve istemciler buna göre davranır (örn. kaynakları gösterip göstermemek):
+#   answered  → dokümanlardan, en az bir geçerli atıfla cevaplandı
+#   not_found → şirket sorusu ama cevap dokümanlarda yok ("bilmiyorum" fallback'i)
+#   off_topic → şirketle ilgisiz mesaj, cevaplanmadı
+#   uncited   → sabit kalıp da değil, geçerli atıf da yok (örn. selamlaşma cevabı,
+#               ya da modelin kaynaksız verdiği bir cevap — ikincisi güvenilmez sayılmalı)
+AnswerType = Literal["answered", "not_found", "off_topic", "uncited"]
 
 
 # Pydantic modelleri: veri yapısını ve tiplerini tanımlar. FastAPI bunları
@@ -30,6 +41,7 @@ class Source(BaseModel):
     chunk_id: int
     score: float  # Cosine uzaklığı (küçük = daha ilgili)
     snippet: str  # Chunk metninin ilk 200 karakteri (önizleme)
+    cited: bool = False  # Cevapta bu kaynağa [ref] ile atıf yapıldı mı
 
 
 class RAGAnswer(BaseModel):
@@ -37,6 +49,9 @@ class RAGAnswer(BaseModel):
 
     question: str
     answer: str
+    answer_type: AnswerType
+    # Retrieval'ın getirdiği tüm chunk'lar (atıf yapılmasa da şeffaflık için döner;
+    # hangilerinin kullanıldığı Source.cited ile belli)
     sources: list[Source]
     prompt_version: str  # Bu cevabı hangi prompt versiyonu üretti (loglama/karşılaştırma için)
 
@@ -71,6 +86,30 @@ def to_sources(documents: list[Document]) -> list[Source]:
         )
         for i, d in enumerate(documents, start=1)
     ]
+
+
+def classify_answer(answer: str, prompt: PromptSpec, n_sources: int) -> tuple[AnswerType, set[int]]:
+    """Cevabın türünü ve geçerli atıf numaralarını belirler.
+
+    Sabit cevap kalıpları prompt dosyasındaki `fixed_replies`'tan okunur; böylece
+    prompt metni değişse bile tespit kuralı otomatik olarak güncel kalır.
+    Dönüş: (cevap türü, atıf yapılan kaynak numaraları — örn. {1, 3})
+    """
+    text = normalize(answer)
+    # Model sabit cevabın başına/sonuna bir şey ekleyebilir ("Maalesef, bu bilgi
+    # dokümanlarda yer almıyor [1]") — bu yüzden birebir eşitlik değil, "içeriyor mu" kontrolü.
+    # fixed_replies yoksa (örn. v1 promptu) .get() None döner ve bu kontroller atlanır.
+    not_found = prompt.fixed_replies.get("not_found")
+    off_topic = prompt.fixed_replies.get("off_topic")
+    if not_found and normalize(not_found) in text:
+        # "Bilmiyorum" cevabındaki olası atıf anlamsız (bilgi o kaynakta yok) → atıf sayılmaz
+        return "not_found", set()
+    if off_topic and normalize(off_topic) in text:
+        return "off_topic", set()
+
+    refs = valid_refs(extract_citations(answer), n_sources)
+    # Geçerli en az bir atıf varsa cevap kaynağa dayanıyor; yoksa kaynaksız
+    return ("answered" if refs else "uncited"), refs
 
 
 def get_rag_prompt() -> PromptSpec:
@@ -115,10 +154,17 @@ def answer_question(
     prompt = prompt or get_rag_prompt()
     # 1) Retrieval: en ilgili top_k chunk
     documents = retrieve(question, vector_store=vector_store)
-    # 2) Generation: chunk'ları bağlam olarak verip cevap üret, 3) kaynaklarla birlikte döndür
+    # 2) Generation: chunk'ları bağlam olarak verip cevap üret
+    answer = generate_answer(question, documents, llm=llm, prompt=prompt)
+    # 3) Cevabı sınıflandır ve hangi kaynaklara atıf yapıldığını işaretle
+    answer_type, cited_refs = classify_answer(answer, prompt, len(documents))
+    sources = to_sources(documents)
+    for source in sources:
+        source.cited = source.ref in cited_refs
     return RAGAnswer(
         question=question,
-        answer=generate_answer(question, documents, llm=llm, prompt=prompt),
-        sources=to_sources(documents),
+        answer=answer,
+        answer_type=answer_type,
+        sources=sources,
         prompt_version=prompt.version,
     )

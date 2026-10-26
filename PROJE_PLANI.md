@@ -119,7 +119,7 @@ Claude Code yeni bir oturumda bu konuşmanın geçmişini bilmiyor, o yüzden bu
 
 - [x] 1. Prompt ayrı dosyada — `app/prompts/rag/<versiyon>.yaml`, `app/prompts/loader.py` ile `ChatPromptTemplate`'e çevrilir; değişken uyuşmazlığında hata verir. Aktif versiyon `.env`'de `RAG_PROMPT_VERSION`; cevapta `prompt_version` döner. v1 = Faz 1.6 sade prompt, v2 = Faz 1.10 kurallı prompt
 - [x] 2. Prompt versiyonlarını karşılaştırma — `scripts/eval_prompts.py`, 29 soruluk set (`data/eval/questions.yaml`), kural tabanlı puanlama (`app/evaluation/scoring.py`). Sonuç [docs/prompt_karsilastirma.md](docs/prompt_karsilastirma.md): v1 %76, v2 %97 (şirket sorularında eşit; fark selamlaşma/konu dışında)
-- [ ] 3. "Bilmiyorum" fallback'i
+- [x] 3. "Bilmiyorum" fallback'i — v2 promptunun sabit cevapları + kodda `classify_answer()`: API cevabında `answer_type` (`answered` / `not_found` / `off_topic` / `uncited`) ve kaynak başına `cited`. Arayüz yalnızca `answered` cevaplarda kaynak gösterir, atıf yapılmayan kaynakları soluklaştırır
 - [ ] 4. Groundedness kontrolü
 - [ ] 5. Latency + token loglama
 - [ ] 6. Maliyet hesabı
@@ -145,4 +145,5 @@ Claude Code yeni bir oturumda bu konuşmanın geçmişini bilmiyor, o yüzden bu
 - Cevabı dokümanda olmayan soruda ("CEO kim?") en iyi uzaklık ~0.70, ilgili sorularda ~0.34–0.47 → Faz 2'deki "bilmiyorum" fallback'i için uzaklık eşiği adayı. **Güncelleme (8. adım):** Cevabı olan bazı sorularda da uzaklık 0.83–0.84 çıktı; eşik tek başına yetmez, groundedness kontrolü gerekli.
 - `qwen3:1.7b` cevap içeriğinde doğru, ama `[n]` atıflarında hatalı: "[K1]" gibi uydurma format veya yanlış numara ([2] yerine [4]). → **Çözüldü:** 8B'ye geçildi.
 - "Nasılsın?" gibi mesajlara doküman özeti dönüyordu → kurallı prompt ile çözüldü. Denenen alternatifler (1.7B ile LLM sınıflandırıcı: 10/26; embedding yönlendirici: 28/30) raporda.
+- **Uzaklık eşiğiyle "bilmiyorum" denemedi (Faz 2.3 kararı):** 29 soruda en iyi uzaklık — cevaplanabilir 0.25–0.84, dokümanda yok 0.51–0.83, selamlaşma 0.74–0.91, konu dışı 0.73–0.90. Geçerli soruları (spor 0.83, şifre 0.84) kaybetmeyen bir eşik (>0.84) yalnızca birkaç konu dışı mesajı yakalar ve "Nasılsın?"a (0.91) selam yerine "bilgi yok" dedirtir → kazanç küçük, risk büyük.
 - "Standart çalışma saatleri" sorusunda doğru chunk ilk 4'e girmiyor (her modelde yanlış) → retrieval/chunking sorunu, Faz 2+.

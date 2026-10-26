@@ -9,6 +9,7 @@ from langchain_core.messages import AIMessage
 
 from app.api.main import app, llm_dependency, vector_store_dependency
 from app.ingestion.pipeline import ingest_pdf
+from app.retrieval.rag import get_rag_prompt
 from app.vectorstore import get_vector_store
 
 SAMPLE_PDF = Path("data/samples/ornek_ik_el_kitabi.pdf")
@@ -38,12 +39,24 @@ def test_ask_returns_answer_with_sources(client):
     assert body["question"] == "Yurt dışı harcırah ne kadar?"
     assert body["answer"] == "75 Euro [1]"
     assert len(body["sources"]) == 4
-    assert set(body["sources"][0]) == {"ref", "source", "page", "chunk_id", "score", "snippet"}
+    assert set(body["sources"][0]) == {"ref", "source", "page", "chunk_id", "score", "snippet", "cited"}
+    assert body["answer_type"] == "answered"
+    assert [src["cited"] for src in body["sources"]] == [True, False, False, False]
 
 
 @pytest.mark.parametrize("payload", [{}, {"question": ""}, {"question": "   "}, {"question": "x" * 1001}])
 def test_ask_rejects_invalid_question(client, payload):
     assert client.post("/ask", json=payload).status_code == 422
+
+
+def test_ask_not_found_marks_no_source_as_cited(client):
+    not_found = get_rag_prompt().fixed_replies["not_found"]
+    app.dependency_overrides[llm_dependency] = lambda: GenericFakeChatModel(
+        messages=iter([AIMessage(content=not_found)])
+    )
+    body = client.post("/ask", json={"question": "Şirketin CEO'su kim?"}).json()
+    assert body["answer_type"] == "not_found"
+    assert not any(src["cited"] for src in body["sources"])
 
 
 def test_ask_returns_503_when_llm_unreachable(client):

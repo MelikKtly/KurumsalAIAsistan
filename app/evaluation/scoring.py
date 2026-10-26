@@ -5,18 +5,17 @@ anlamı tam ölçmez. Daha ince değerlendirme için Faz 2.4 (groundedness) ve 2
 (golden set) eklenecek.
 """
 
-import re
 from pathlib import Path
 
 import yaml
 from pydantic import BaseModel
 
+from app.retrieval.citations import extract_citations
+from app.text import normalize
+
 # Cevabı dokümanda olan kategoriler (diğerleri: yok, sohbet, alakasiz)
 ANSWERABLE = {"dogrudan", "cikarim"}
-# Köşeli parantez içindeki atıfları yakalar: "[1]", "[K1]", "[12]"...
-# [^\[\]]{1,10}: içinde köşeli parantez olmayan 1–10 karakter → geçersiz atıfları da yakalayabilmek için
-# sadece rakam aramıyoruz. Parantez içi () grubu findall'un sadece içeriği ("1", "K1") döndürmesini sağlar.
-CITATION = re.compile(r"\[([^\[\]]{1,10})\]")
+# (Atıf ayrıştırma kuralı app/retrieval/citations.py'de; RAG ile ortak)
 
 
 # --- Veri modelleri (data/eval/questions.yaml'ın yapısı) ---
@@ -52,13 +51,6 @@ def load_eval_set(path: str | Path) -> EvalSet:
     return EvalSet.model_validate(yaml.safe_load(Path(path).read_text(encoding="utf-8")))
 
 
-def normalize(text: str) -> str:
-    """Büyük/küçük harf duyarsız karşılaştırma için metni küçük harfe çevirir."""
-    # Python'un lower()'ı Türkçeyi bilmez: "İ".lower() → "i̇" (i + birleşik nokta),
-    # "I".lower() → "i" (Türkçede "ı" olmalı). Önce bu iki harfi elle düzeltiyoruz.
-    return text.replace("İ", "i").replace("I", "ı").lower()
-
-
 def contains_all(answer: str, requirements: list[str]) -> bool:
     """Her gereksinimden en az bir alternatif ("a|b") cevapta geçmeli."""
     text = normalize(answer)
@@ -76,7 +68,7 @@ def score_answer(
 ) -> Score:
     """Bir cevabı soru kategorisinin beklenen davranışına göre puanlar."""
     # --- Atıf analizi ---
-    citations = CITATION.findall(answer)
+    citations = extract_citations(answer)
     # 4 chunk getirildiyse geçerli atıflar "1".."4"
     valid_refs = {str(i) for i in range(1, len(retrieved_chunks) + 1)}
     invalid = [c for c in citations if c not in valid_refs]
