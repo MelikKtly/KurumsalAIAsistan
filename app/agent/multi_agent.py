@@ -60,7 +60,7 @@ def build_multi_agent_graph(
     max_rounds: int,
 ):
     # include_raw=True: token sayısı için ham mesaj da gelsin (groundedness'taki gibi)
-    decide = load_prompt("supervisor", "v1").template | supervisor_llm.with_structured_output(
+    decide = load_prompt("supervisor", "v2").template | supervisor_llm.with_structured_output(
         SupervisorDecision, include_raw=True
     )
 

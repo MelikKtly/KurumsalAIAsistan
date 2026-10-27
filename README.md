@@ -77,8 +77,8 @@ Tüm sayılar bu repodaki scriptlerle üretildi; raporlar `docs/` altında.
 | --- | --- | --- |
 | Tek adımlı agent (10 görev) | 7/10 — iki araç gerektiren görevlerde 0/3 | [agent_simple.md](docs/agent_simple.md) |
 | LangGraph agent, prompt v1 → v2 (12 görev) | 11/12 → **12/12** | [v1](docs/agent_graph_v1.md) · [v2](docs/agent_graph_v2.md) |
-| LangGraph agent, SQL görevleri dahil (15 görev) | ⏳ | |
-| Supervisor + worker multi-agent (15 görev) | ⏳ | |
+| LangGraph agent, SQL görevleri dahil (15 görev): agent/v2 vs **v3** | 13/15 vs **13/15** (v3 kişiye özgü SQL + kural birleştirmede doğru; varsayılan) | [v2](docs/agent_graph_v2_15.md) · [v3](docs/agent_graph_v3_15.md) |
+| Supervisor + worker multi-agent vs tek-agent (aynı 11 görev) | 8/11 vs **10/11** · 126 sn vs **67 sn** → tek-agent seçildi | [agent_multi.md](docs/agent_multi.md) |
 
 **Gelişim:** Faz 1'de `qwen3:1.7b` ile 18 soruda 12 doğru ve 2 uydurma vardı ([faz1_elle_test.md](docs/faz1_elle_test.md)); model (`8b`), kurallı prompt ve hakemle uydurma sıfıra indi.
 
@@ -120,7 +120,7 @@ Sorgu geçmişine bakmak: `docker compose exec postgres psql -U kurumsal -d kuru
 
 ## Örnek istekler
 
-**RAG — kaynaklı cevap**
+**RAG — kaynaklı cevap** (gerçek çıktı, Docker uçtan uca testi; `…` alanlar kısaltıldı)
 
 ```bash
 curl -X POST localhost:8000/ask -H 'Content-Type: application/json' \
@@ -129,40 +129,43 @@ curl -X POST localhost:8000/ask -H 'Content-Type: application/json' \
 
 ```json
 {
-  "answer": "Kıdeminiz 7 yıl olduğuna göre yıllık izniniz 20 iş günüdür [1].",
+  "answer": "Kıdemim 7 yıl olduğuna göre yıllık iznin 20 iş günüdür [1].",
   "answer_type": "answered",
   "sources": [{"ref": 1, "source": "ornek_ik_el_kitabi.pdf", "page": 2, "score": 0.3853, "cited": true, "snippet": "4. Yıllık İzin..."}],
   "groundedness": {"grounded": true, "unsupported_claims": []},
-  "metrics": {"total_ms": 9412.6, "total_tokens": {"total_tokens": 2949}, "cost": {"usd": 0.0, "reference_model": "claude-sonnet-5-5", "reference_usd": 0.0061}}
+  "metrics": {"retrieval_ms": "…", "generation_ms": "…", "grounding_ms": "…", "total_ms": 25700,
+              "total_tokens": {"total_tokens": 2949}, "cost": {"usd": 0.0, "reference_model": "claude-sonnet-5-5", "reference_usd": "…"}}
 }
 ```
 
 `answer_type`: `answered` (kaynaklı) · `not_found` ("Bu bilgi dokümanlarda yer almıyor.") · `off_topic` · `uncited` (selamlaşma). Hakem desteksiz bir ifade bulursa `grounded: false` ve `unsupported_claims` döner; arayüz uyarı gösterir.
 
-**Agent — çok adımlı görev**
+**Agent — çok adımlı görev** (gerçek çıktı, Docker uçtan uca testi)
 
 ```bash
 curl -X POST localhost:8000/agent -H 'Content-Type: application/json' \
-  -d '{"question": "Yurt dışı günlük yemek harcırahı ile yurt içi harcırahı TL cinsinden karşılaştır"}'
+  -d '{"question": "Yurt dışı günlük yemek harcırahım kaç TL eder?"}'
 ```
 
 ```json
 {
-  "answer": "Yurt dışı günlük yemek harcırahı 75 Euro [1], güncel kurla (1 EUR = 55,513 TL, 2026-10-27) 4.163,48 TL; yurt içi 1.200 TL [1]. Yurt dışı harcırahı 2.963,48 TL daha yüksek.",
+  "answer": "Yurt dışı günlük yemek harcırahı 75 Euro'dur. Bu tutar, 55.513 TRY (Avrupa Merkez Bankası, 2026-10-27) döviz kuruyla hesaplanırsa 4.163,48 TL'ye karşılık gelir. [1]",
   "steps": [
-    {"tool": "search_documents", "args": {"query": "yurt dışı ve yurt içi yemek harcırahı"}},
+    {"tool": "search_documents", "args": {"query": "yurt dışı yemek harcırahı"}},
     {"tool": "get_exchange_rate", "args": {"base": "EUR", "target": "TRY"}}
   ],
-  "llm_calls": 3, "stop_reason": "done", "cost_usd": 0.0
+  "llm_calls": 3, "stop_reason": "done", "total_ms": 66684.9, "cost_usd": 0.0
 }
 ```
+
+Kişiye özgü sorular SQL ile kuralı birleştirir: *"Ayşe Yılmaz'ın yıllık izin hakkı kaç gün?"* → `query_employees` (işe başlama 2019-03-01) + `search_documents` (5–15 yıl → 20 iş günü).
 
 ## Yapılandırma (`.env`)
 
 | Değişken | Varsayılan | Açıklama |
 | --- | --- | --- |
 | `LLM_MODEL` | `qwen3:8b` | Ollama modeli |
-| `RAG_PROMPT_VERSION` / `AGENT_PROMPT_VERSION` | `v2` / `v2` | `app/prompts/<ad>/<versiyon>.yaml` |
+| `RAG_PROMPT_VERSION` / `AGENT_PROMPT_VERSION` | `v2` / `v3` | `app/prompts/<ad>/<versiyon>.yaml` |
 | `GROUNDEDNESS_CHECK` | `true` | Hakem (kaynaklı cevapların süresini ~2 katına çıkarır) |
 | `TOP_K`, `CHUNK_SIZE`, `CHUNK_OVERLAP` | `4`, `1000`, `150` | Retrieval / chunking |
 | `AGENT_MAX_STEPS`, `AGENT_MAX_OUTPUT_TOKENS` | `6`, `2048` | Agent döngü ve düşünme sınırları |

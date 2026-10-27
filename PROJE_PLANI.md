@@ -128,7 +128,7 @@ Bu faz bitince elinde demo değil, kurulumu, testi ve dokümantasyonu olan, CV'y
 - [x] 4. LangGraph state machine — `app/agent/graph.py`: agent (planla/değerlendir) → tools (araç çağır) → agent döngüsü, `finalize` (limit dolunca araçsız son cevap). İlk ölçüm: 9/10 (tek adımlı 7/10). 12 görevde prompt karşılaştırması: v1 11/12, **v2 12/12** (görev başına 64 → 82 sn) ([v1](docs/agent_graph_v1.md), [v2](docs/agent_graph_v2.md)); varsayılan agent promptu v2
 - [x] 5. Çok adımlı görev senaryosu — `agent_tasks.yaml`'a a11 (yurt içi/yurt dışı harcırah karşılaştırması, TL) ve a12 (3 günlük yurt dışı harcırah toplamı) eklendi; agent prompt v2 (araçları kendin çağır, sayıları yalnızca araç sonuçlarından al)
 - [x] 6. Adım adım loglama — her LLM kararı (planlanan araçlar, süre, token) ve her araç çalışması (girdi, sonuç, süre) `trace` olarak; `logs/agent.jsonl`. a06 hatası bu izle bulundu: model kur aracını kendisi çağırmak yerine kullanıcıya "get_exchange_rate aracını kullanın" yazdı
-- [x] 7. Supervisor + worker multi-agent — `app/agent/multi_agent.py`: supervisor (araçsız, yapılandırılmış karar: önce düşünce sonra karar) ↔ worker (LangGraph agent'ı); tur limiti, geçersiz çıktıda güvenli bitiş
+- [x] 7. Supervisor + worker multi-agent — `app/agent/multi_agent.py`: supervisor (araçsız, yapılandırılmış karar: önce düşünce sonra karar) ↔ worker (LangGraph agent'ı); tur limiti, geçersiz çıktıda güvenli bitiş. **Karşılaştırma** ([docs/agent_multi.md](docs/agent_multi.md)), aynı 11 görev: multi 8/11 vs tek-agent **10/11**; 126 vs **67 sn**; 4.1 vs 2.0 LLM çağrısı. Koordinasyon hataları (worker araç kullanmadı, görev tekrarı, talimatta "dolar"→"Euro") ve iç içe LangGraph grafiğinde donma (muhtemel deadlock, kök neden bulunamadı) → `/agent` tek-agent kullanır
 - [x] 8. Başarısız senaryolar, maksimum adım limiti — ayrıca multi-agent ölçümünde bir LLM isteği 5+ dk cevapsız kaldı (süreç dondu) → tüm LLM bağlantılarına okuma zaman aşımı (`LLM_READ_TIMEOUT_S`). Önceki: — `AGENT_MAX_STEPS` (6, finalize ile), multi-agent tur limiti, LangGraph `recursion_limit`. Gerçek ölçümde bulunan döngü: düşünme modunda bir görev tek LLM çağrısı içinde 11+ dk takıldı (adım limiti yakalayamaz) → `AGENT_MAX_OUTPUT_TOKENS=2048` (normal çağrı 100–500) + `done_reason="length"` tespiti (`stop_reason: output_limit`). Not: Ollama read timeout toplam süre sınırı değil (stream parçaları arası)
 
 ### Faz 4 durumu
@@ -140,7 +140,9 @@ Bu faz bitince elinde demo değil, kurulumu, testi ve dokümantasyonu olan, CV'y
 - [x] 5. pytest temel testler — toplam 109 test. Retrieval kalitesi (`tests/test_retrieval_quality.py`): gerçek embedding modeliyle geliştirme setinde recall@4 ≥ 15/17 ve anlamsal eşleşme örnekleri; model yoksa (CI) otomatik atlanır. Agent araç seçimi (mock LLM): üç aracın modele bağlanması, kişiye özgü soruda SQL → doküman akışı (`tests/test_graph_agent.py`), SQL güvenliği (`tests/test_sql_tool.py`)
 - [x] 6. Golden set otomatik eval + GitHub Actions — `scripts/run_golden.py --min-pass N` kalite kapısı (eşik altında çıkış kodu 1; LLM gerektirdiği için lokalde). `.github/workflows/tests.yml`: her push'ta pytest (LLM'siz, ücretsiz kota içinde). Linux'ta CPU-only PyTorch (`tool.uv.sources`) → CI/Docker'da ~3 GB CUDA indirmesi yok
 - [x] 7. Docker Compose — `Dockerfile` + `docker-compose.yml`: api + postgres:16 + chroma 1.5.9 (sunucu modu); Ollama bilgisayarda (`host.docker.internal`). Uçtan uca doğrulandı: konteynerden ingest → Chroma sunucusu, `/ask` (hakem dahil), `/agent` (doküman + kur, SQL), Postgres'e `query_logs` kaydı, JSON loglar. Postgres'te salt-okunur SQL koruması doğrulandı (`ReadOnlySqlTransaction`). Host portu 5433 (yerel PostgreSQL 5432'yi kullanıyor). İmaj ~2 GB
-- [ ] 8. README
+- [x] 8. README — mimari diyagram (Mermaid), teknoloji, ölçülmüş sonuçlar tablosu (RAG + agent), lokal ve Docker kurulumu, gerçek örnek istek/cevaplar, yapılandırma, değerlendirme komutları, proje yapısı, bilinen sınırlar
+
+**Faz 4 tamamlandı — proje tamamlandı (27 Ekim 2026).**
 
 ### Alınan kararlar
 
@@ -152,6 +154,8 @@ Bu faz bitince elinde demo değil, kurulumu, testi ve dokümantasyonu olan, CV'y
 | Prompt yönetimi | Versiyonlu YAML dosyaları (`app/prompts/`) | Çok satırlı metin okunaklı; açıklama ve sabit cevaplar aynı dosyada; versiyonlar kod değişmeden `.env` ile seçilir ve karşılaştırılabilir |
 | Groundedness kararı | LLM yalnızca desteksiz iddiaları listeler; `grounded` kodda türetilir | LLM kararı alanı ilk sıradayken düşünmeden karar veriyor, sonrakinde listeyle çelişen karar veriyordu (ölçüldü) |
 | Maliyet (lokal model) | Gerçek maliyet $0 + referans API modeliyle tahmini maliyet | Ollama ücretsiz; plan "token × fiyat" istiyor → "API'ye geçersek ne öderiz" sorusunu cevaplamak için |
+| Agent mimarisi | Tek-agent (LangGraph) | Multi-agent ölçümde daha yavaş (~1.9×), daha az isabetli (8/11 vs 10/11) ve kararsız (donma) |
+| Agent prompt | v3 (SQL + kural birleştirme) | v2 ile 15 görevde eşit (13/15); v3 kişiye özgü sorularda doğru |
 | Frontend | FastAPI'nin sunduğu tek sayfa HTML/JS, kütüphanesiz | Odak backend+AI; ayrı frontend projesi gerektirmez, kendi API'mizi tüketir |
 | Gerçek PDF'ler | `data/pdfs/` git'e girmez | Kurumsal belgeler repoya sızmasın |
 

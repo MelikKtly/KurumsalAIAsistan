@@ -50,7 +50,7 @@ class Settings(BaseSettings):
     # --- Agent (Faz 3) ---
     # Döviz kuru aracı: ücretsiz, anahtarsız Avrupa Merkez Bankası kurları (frankfurter.dev)
     exchange_api_url: str = "https://api.frankfurter.dev/v1/latest"
-    agent_prompt_version: str = "v2"  # app/prompts/agent/<versiyon>.yaml
+    agent_prompt_version: str = "v3"  # app/prompts/agent/<versiyon>.yaml
     agent_max_steps: int = 6  # Agent'ın en fazla kaç LLM adımı atabileceği (sonsuz döngü koruması)
     # Tek bir agent LLM çağrısının en fazla üretebileceği token (düşünme + cevap). Ölçüldü: normal
     # çağrılar 100–500 çıktı token'ı; düşünme modunda model bazen bitmeyen bir düşünme döngüsüne
