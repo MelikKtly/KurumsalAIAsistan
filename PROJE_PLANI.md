@@ -88,15 +88,6 @@ Artık tüm parçaları gerçek, test edilebilir bir servise dönüştürüyoruz
 
 Bu faz bitince elinde demo değil, kurulumu, testi ve dokümantasyonu olan, CV'ye konabilecek tam bir servis var.
 
-## Claude Code ile Devam Etme Notları
-
-Claude Code yeni bir oturumda bu konuşmanın geçmişini bilmiyor, o yüzden bu döküman onunla aran daki bağlantı görevi görüyor.
-
-- Yeni bir Claude Code oturumu açtığında bu dokümanın içeriğini (özellikle Teknoloji Yığını ve Faz 1 adımları) context olarak yapıştır ya da özetle
-- Faz 1'i bitirmeden Faz 2'ye geçmeye çalışma — her faz kendi başına bir checkpoint
-- Bir adımda takılırsan, o adımı daha küçük parçalara böl (örn. "chunking çalışıyor mu" ayrı bir test adımı olabilir)
-- İlerledikçe bu dokümanı güncelleyelim: hangi faz bitti, hangi kararlar alındı, neyin değiştirildiği buraya eklenebilir
-
 ## İlerleme ve Kararlar
 
 ### Faz 1 durumu
