@@ -35,6 +35,10 @@ class Settings(BaseSettings):
     # --- Vektör veritabanı ---
     chroma_dir: str = "data/chroma"  # Chroma'nın verisini yazdığı klasör (git'e girmez)
     chroma_collection: str = "kurumsal_docs"  # Koleksiyon ≈ SQL'deki tablo
+    # Chroma sunucu modu (Docker Compose): host verilirse ayrı Chroma sunucusuna bağlanılır,
+    # boşsa gömülü mod (chroma_dir klasörü) kullanılır.
+    chroma_host: str = ""
+    chroma_port: int = 8000
 
     # --- Chunking ---
     chunk_size: int = 1000  # Bir parçanın en fazla karakter sayısı

@@ -1,0 +1,34 @@
+# Her push ve pull request'te hızlı test setini çalıştırır (Faz 4.6).
+#
+# LLM (Ollama) gerektiren hiçbir şey burada çalışmaz: testler sahte modeller kullanır.
+# Gerçek embedding modeli gerektiren retrieval kalite testi CI'da otomatik atlanır.
+# LLM'li değerlendirmeler (golden set, agent görevleri) lokalde çalıştırılır:
+#   uv run python -m scripts.run_golden --min-pass 13
+#
+# Maliyet: private repoda GitHub ücretsiz planın aylık dakika kotasından düşer (çalışma başına ~3–5 dk).
+
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:  # Actions sekmesinden elle de tetiklenebilir
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15  # Bir şey takılırsa kota harcamasın
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: uv kur
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true  # Bağımlılıklar önbelleklenir; sonraki çalışmalar hızlanır
+
+      - name: Bağımlılıkları kur
+        run: uv sync --frozen  # uv.lock'taki tam sürümler (lokal ortamla birebir)
+
+      - name: Testler
+        run: uv run pytest -q

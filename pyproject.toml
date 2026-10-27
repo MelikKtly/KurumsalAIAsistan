@@ -19,6 +19,7 @@ dependencies = [
     "python-dotenv>=1.2.4",
     "pyyaml>=6.0.3",
     "sentence-transformers>=6.2.0",
+    "torch>=2.14.1",  # sentence-transformers için; Linux'ta CPU sürümü (aşağıdaki tool.uv.sources)
     "sqlalchemy>=2.1.6",
     "uvicorn[standard]>=0.54.0",
 ]
@@ -31,3 +32,14 @@ dev = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+# Linux'ta (CI ve Docker) PyTorch'un CPU sürümü: varsayılan CUDA sürümü ~3 GB ek indirme getirir,
+# GPU'suz ortamlarda gereksiz. macOS etkilenmez (marker yalnızca linux).
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true  # Yalnızca torch için kullanılır; diğer paketler PyPI'dan gelir
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu", marker = "sys_platform == 'linux'" }]
+

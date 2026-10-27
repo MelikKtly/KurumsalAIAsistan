@@ -146,8 +146,8 @@ Claude Code yeni bir oturumda bu konuşmanın geçmişini bilmiyor, o yüzden bu
 - [~] 2. Veritabanı — `app/db.py` (SQLAlchemy): `query_logs` (her /ask ve /agent isteği: soru, cevap, araçlar, süre, token, maliyet) + `employees`. `DATABASE_URL`: lokal SQLite, Docker'da PostgreSQL
 - [~] 3. SQL + vektör DB birlikte — `app/agent/sql_tool.py`: `query_employees` text-to-SQL aracı (tek SELECT, tablo izin listesi, CTE kontrolü, veritabanı seviyesinde salt-okunur, 50 satır sınırı); agent prompt v3; `agent_tasks.yaml`'a a13–a15 (kural + kişi verisi)
 - [~] 4. Yapılandırılmış logging — `app/logging_config.py`: JSON loglar stdout'a, `LOG_LEVEL`; her istek için request_id (X-Request-ID başlığı), süre, durum; agent araç çağrıları DEBUG, araç hataları WARNING, Ollama erişilemez ERROR
-- [ ] 5. pytest temel testler
-- [ ] 6. Golden set otomatik eval + GitHub Actions
+- [x] 5. pytest temel testler — toplam 109 test. Retrieval kalitesi (`tests/test_retrieval_quality.py`): gerçek embedding modeliyle geliştirme setinde recall@4 ≥ 15/17 ve anlamsal eşleşme örnekleri; model yoksa (CI) otomatik atlanır. Agent araç seçimi (mock LLM): üç aracın modele bağlanması, kişiye özgü soruda SQL → doküman akışı (`tests/test_graph_agent.py`), SQL güvenliği (`tests/test_sql_tool.py`)
+- [x] 6. Golden set otomatik eval + GitHub Actions — `scripts/run_golden.py --min-pass N` kalite kapısı (eşik altında çıkış kodu 1; LLM gerektirdiği için lokalde). `.github/workflows/tests.yml`: her push'ta pytest (LLM'siz, ücretsiz kota içinde). Linux'ta CPU-only PyTorch (`tool.uv.sources`) → CI/Docker'da ~3 GB CUDA indirmesi yok
 - [ ] 7. Docker Compose
 - [ ] 8. README
 

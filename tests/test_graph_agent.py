@@ -72,3 +72,34 @@ def test_output_limit_stops_with_clear_message():
     assert result.stop_reason == "output_limit"
     assert "çıktı sınırına ulaştı" in result.answer
     assert result.trace[-1]["output_limit"] is True
+
+
+def test_agent_offers_all_three_tools_to_model():
+    # Model hangi araçları seçebileceğini bu listeden görür: üç araç da adı ve açıklamasıyla bağlanmalı
+    from app.agent.tools import TOOLS as REAL_TOOLS
+
+    model = ScriptedToolModel([AIMessage(content="Merhaba!")])
+    run_graph_agent("Merhaba", llm=model)  # tools verilmedi → gerçek araç listesi
+    names = {t.name for t in model.bound_tools}
+    assert names == {"search_documents", "get_exchange_rate", "query_employees"} == {t.name for t in REAL_TOOLS}
+    assert all(t.description for t in model.bound_tools)  # Model açıklamaya bakarak seçim yapar
+
+
+def test_agent_routes_employee_question_through_sql_then_documents(tmp_path):
+    # Kişiye özgü soru: önce çalışan verisi (SQL), sonra kural (doküman) — mock LLM ile akış testi
+    sql_called = []
+
+    @tool
+    def query_employees(sql: str) -> str:
+        """Sahte SQL."""
+        sql_called.append(sql)
+        return "full_name | start_date\nAyşe Yılmaz | 2019-03-01"
+
+    model = ScriptedToolModel([
+        AIMessage(content="", tool_calls=[tool_call("query_employees", {"sql": "SELECT start_date FROM employees"}, "c1")]),
+        AIMessage(content="", tool_calls=[tool_call("search_documents", {"query": "kıdem izin"}, "c2")]),
+        AIMessage(content="7 yıl kıdem → 20 iş günü [1]"),
+    ])
+    result = run_graph_agent("Ayşe'nin izni?", llm=model, tools=[*TOOLS, query_employees])
+    assert [s.tool for s in result.steps] == ["query_employees", "search_documents"]
+    assert sql_called == ["SELECT start_date FROM employees"]

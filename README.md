@@ -1,5 +1,7 @@
 # Kurumsal AI Asistanı
 
+![tests](https://github.com/MelikKtly/KurumsalAIAsistan/actions/workflows/tests.yml/badge.svg)
+
 Dağınık kurumsal veri kaynaklarını (PDF, SQL, web) doğal dilde sorgulanabilir hale getiren RAG + Agent platformu.
 
 Detaylı yol haritası: [PROJE_PLANI.md](PROJE_PLANI.md)

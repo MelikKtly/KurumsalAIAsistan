@@ -16,6 +16,7 @@ import yaml
 from pydantic import BaseModel
 
 from app.config import get_settings
+from app.db import init_db
 from app.evaluation.scoring import contains_all
 
 
@@ -60,6 +61,7 @@ def main() -> None:
     parser.add_argument("--out", required=True)
     args = parser.parse_args()
 
+    init_db()  # query_employees aracı için tablolar + örnek çalışan verisi (API'de lifespan yapıyor)
     run = get_runner(args.agent)
     rows = []
     for task in load_tasks(args.tasks):
