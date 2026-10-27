@@ -129,6 +129,17 @@ Claude Code yeni bir oturumda bu konuşmanın geçmişini bilmiyor, o yüzden bu
 
 **Faz 2 tamamlandı (27 Ekim 2026).**
 
+### Faz 3 durumu
+
+- [x] 1. Vektör arama araç olarak — `app/agent/tools.py`: `search_documents` (Faz 1 retrieval'ı `@tool` ile sarıldı)
+- [x] 2. Tek araçlı, tek adımlı agent — `app/agent/simple_agent.py` (döngüsüz: karar → araç → cevap). LLM: Ollama `qwen3:8b` (ücretsiz; plandaki "Claude function calling" yerine). Bulgu: qwen3 düşünme modu kapalıyken araç çağıramıyor → agent için `get_agent_llm()` (reasoning=True)
+- [x] 3. İkinci araç: `get_exchange_rate` (frankfurter.dev, ücretsiz/anahtarsız ECB kurları). `data/eval/agent_tasks.yaml` (10 görev) + `scripts/eval_agent.py`. Sonuç [docs/agent_simple.md](docs/agent_simple.md): **7/10** — tek araçlı/araçsız görevler 7/7, iki araç gerektiren görevler **0/3** (model ilk turda yalnızca doküman aramasını çağırıyor, kura 2. turda ihtiyaç duyuyor ama tek adımlı yapı izin vermiyor; bir denemede kuru uydurdu: 10,35 TRY). Ortalama 44.6 sn/görev
+- [ ] 4. LangGraph state machine
+- [ ] 5. Çok adımlı görev senaryosu
+- [ ] 6. Adım adım loglama
+- [ ] 7. Supervisor + worker multi-agent
+- [ ] 8. Başarısız senaryolar, maksimum adım limiti
+
 ### Alınan kararlar
 
 | Konu | Karar | Neden |

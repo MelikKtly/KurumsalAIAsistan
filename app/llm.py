@@ -25,3 +25,21 @@ def get_llm() -> BaseChatModel:
         temperature=0,  # Aynı soruya tutarlı cevap; RAG'de yaratıcılık istemiyoruz
         reasoning=False,  # qwen3'ün <think> modunu kapat: daha hızlı, cevapta düşünce metni olmaz
     )
+
+
+# Agent için ayrı model nesnesi. Fark: düşünme (reasoning) modu AÇIK.
+# Ölçüldü: qwen3 + Ollama'da reasoning=False iken bind_tools ile araç çağrısı istendiğinde
+# model boş cevap dönüyor (ne araç çağrısı ne metin). reasoning=True'da araçları doğru çağırıyor;
+# düşünme metni cevaba karışmaz, ayrı alanda (additional_kwargs["reasoning_content"]) gelir.
+# RAG zinciri hız için düşünmesiz kalır (get_llm); agent planlama yaptığı için düşünmesi zaten faydalı.
+@lru_cache
+def get_agent_llm() -> BaseChatModel:
+    """Araç kullanan agent için Ollama sohbet modeli (düşünme modu açık)."""
+    settings = get_settings()
+    return ChatOllama(
+        model=settings.llm_model,
+        base_url=settings.ollama_base_url,
+        temperature=0,
+        reasoning=True,
+    )
+

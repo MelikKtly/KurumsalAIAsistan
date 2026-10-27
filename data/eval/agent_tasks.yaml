@@ -1,0 +1,21 @@
+# Agent değerlendirme seti: doğru araçları seçiyor mu, doğru sonuca ulaşıyor mu?
+#
+#   expected_tools: Görevi doğru çözmek için çağrılması GEREKEN araçlar (sıra önemsiz)
+#   must_contain:   Son cevapta geçmesi gerekenler ("a|b" = a veya b). Kur değiştiği için
+#                   TL tutarları yerine doküman değerleri / kur kaynağı kontrol edilir.
+
+tasks:
+  # Yalnızca doküman araması
+  - {id: a01, question: "Babalık izni kaç gün?", expected_tools: [search_documents], must_contain: ["10"]}
+  - {id: a02, question: "Yıllık eğitim bütçem ne kadar?", expected_tools: [search_documents], must_contain: ["15.000|15000"]}
+  - {id: a03, question: "Şifrem en az kaç karakter olmalı?", expected_tools: [search_documents], must_contain: ["12"]}
+  # Yalnızca döviz kuru
+  - {id: a04, question: "1 Euro bugün kaç TL?", expected_tools: [get_exchange_rate], must_contain: ["merkez bankası|kur"]}
+  - {id: a05, question: "100 Amerikan doları kaç Euro eder?", expected_tools: [get_exchange_rate], must_contain: ["eur|euro"]}
+  # İki araç gerektiren çok adımlı görevler
+  - {id: a06, question: "Yurt dışı günlük yemek harcırahım kaç TL eder?", expected_tools: [search_documents, get_exchange_rate], must_contain: ["75"]}
+  - {id: a07, question: "Yurt içi gecelik konaklama limiti kaç Euro'ya denk geliyor?", expected_tools: [search_documents, get_exchange_rate], must_contain: ["4.000|4000"]}
+  - {id: a08, question: "Yıllık eğitim bütçem kaç dolar eder?", expected_tools: [search_documents, get_exchange_rate], must_contain: ["15.000|15000"]}
+  # Araç gerektirmeyen
+  - {id: a09, question: "Merhaba, nasılsın?", expected_tools: [], must_contain: []}
+  - {id: a10, question: "Teşekkürler, çok yardımcı oldun.", expected_tools: [], must_contain: []}

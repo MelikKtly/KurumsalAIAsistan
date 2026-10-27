@@ -43,6 +43,11 @@ class Settings(BaseSettings):
     # --- Retrieval ---
     top_k: int = 4  # Her soruda LLM'e verilecek en yakın parça sayısı
 
+    # --- Agent (Faz 3) ---
+    # Döviz kuru aracı: ücretsiz, anahtarsız Avrupa Merkez Bankası kurları (frankfurter.dev)
+    exchange_api_url: str = "https://api.frankfurter.dev/v1/latest"
+    agent_max_steps: int = 6  # Agent'ın en fazla kaç LLM adımı atabileceği (sonsuz döngü koruması)
+
     # --- Gözlemlenebilirlik ---
     # Her /ask isteğinin süre ve token ölçümleri bu dosyaya bir JSON satırı olarak eklenir
     request_log_path: str = "logs/requests.jsonl"
