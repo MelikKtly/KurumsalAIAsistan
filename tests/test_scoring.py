@@ -73,3 +73,23 @@ def test_eval_set_file_is_valid():
     for x in eval_set.questions:
         if x.category in {"dogrudan", "cikarim"}:
             assert x.must_contain and x.expected_chunk is not None, x.id
+
+
+OFF_TOPIC = ["yardımcı olamıyorum"]
+
+
+def test_not_found_question_rejected_as_off_topic_fails():
+    # Şirket sorusuna "konu dışı" reddi: ret var ama türü yanlış
+    answer = "Bu konuda yardımcı olamıyorum; yalnızca şirket dokümanlarıyla ilgili soruları cevaplayabiliyorum."
+    s = score_answer(q("yok"), answer, CHUNKS, MARKERS, OFF_TOPIC)
+    assert not s.passed and s.reason == "konu dışı sandı"
+    # Gerçek konu dışı soruda aynı cevap doğrudur
+    assert score_answer(q("alakasiz"), answer, CHUNKS, MARKERS, OFF_TOPIC).passed
+
+
+def test_format_checks():
+    question = EvalQuestion(id="t", category="dogrudan", question="Yıllık izin hakkım kaç gün?", expected="", must_contain=["14"])
+    assert score_answer(question, "Yıllık izin hakkım kaç gün? 14 gün [1]", CHUNKS, MARKERS).reason == "soruyu tekrar etti"
+    assert score_answer(question, "**14 gün** [1]", CHUNKS, MARKERS).reason == "markdown kullandı"
+    assert score_answer(question, "14 gün [1]", CHUNKS, MARKERS).passed
+

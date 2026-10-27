@@ -51,7 +51,7 @@ def run(versions: list[str], questions_path: str) -> tuple[list[dict], dict]:
             start = time.perf_counter()  # Süre sadece LLM üretimini ölçer (retrieval hariç)
             answer = generate_answer(q.question, documents, prompt=prompt).text
             seconds = time.perf_counter() - start
-            score = score_answer(q, answer, chunks, eval_set.refusal_markers)
+            score = score_answer(q, answer, chunks, eval_set.refusal_markers, eval_set.off_topic_markers)
             row["results"][v] = {"answer": answer, "seconds": seconds, "score": score}
             mark = "✅" if score.passed else f"❌ {score.reason}"
             # Uzun süren çalıştırmada ilerlemeyi canlı görmek için her sonucu yazdır

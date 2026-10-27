@@ -25,6 +25,12 @@ refusal_markers:
   - yardımcı olamıyorum
   - cevaplayamıyorum
 
+# Konu dışı reddine özgü ifadeler: "dokümanda yok" sorularında bunlar görülürse model
+# şirket sorusunu konu dışı sanmış demektir (yanlış ret türü).
+off_topic_markers:
+  - yardımcı olamıyorum
+  - yalnızca şirket dokümanlarıyla
+
 questions:
   # --- Doğrudan bilgi ---
   - id: d01
@@ -149,6 +155,25 @@ questions:
     category: yok
     question: Ankara ofisinin adresi nedir?
     expected: Ankara'da şube var, adres dokümanda yok
+
+  # Golden set v1'de görülen hata türü için eklendi (golden set'teki sorulardan farklı):
+  # şirketle ilgili ama dokümanda olmayan konular → "konu dışı" değil, "dokümanda yok" denmeli
+  - id: y05
+    category: yok
+    question: Şirkette kaç kişi çalışıyor?
+    expected: Dokümanda yok (şirketle ilgili)
+  - id: y06
+    category: yok
+    question: Çalışanlar için ulaşım servisi (servis aracı) var mı?
+    expected: Dokümanda yok (şirketle ilgili)
+  - id: y07
+    category: yok
+    question: Yıl sonu primi veriliyor mu?
+    expected: Dokümanda yok (şirketle ilgili)
+  - id: y08
+    category: yok
+    question: Annelik izni kaç hafta?
+    expected: Dokümanda yok (babalık izni var, annelik izni yok)
 
   # --- Selamlaşma / sohbet ---
   - id: s01

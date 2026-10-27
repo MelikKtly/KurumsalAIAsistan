@@ -30,6 +30,7 @@ class EvalQuestion(BaseModel):
 
 class EvalSet(BaseModel):
     refusal_markers: list[str]  # "Bilgi yok / cevaplayamam" anlamına gelen ifadeler
+    off_topic_markers: list[str] = []  # Konu dışı reddine özgü ifadeler (alt küme)
     questions: list[EvalQuestion]
 
 
@@ -65,6 +66,7 @@ def score_answer(
     answer: str,
     retrieved_chunks: list[int],  # Retrieval sırasıyla chunk_id'ler: [1]=retrieved_chunks[0], ...
     refusal_markers: list[str],
+    off_topic_markers: list[str] = (),
 ) -> Score:
     """Bir cevabı soru kategorisinin beklenen davranışına göre puanlar."""
     # --- Atıf analizi ---
@@ -75,6 +77,7 @@ def score_answer(
     # Atıf numaralarını gerçek chunk_id'lere çevir: "[2]" → retrieved_chunks[1]
     cited_chunks = {retrieved_chunks[int(c) - 1] for c in citations if c in valid_refs}
     refused = any(normalize(m) in normalize(answer) for m in refusal_markers)
+    off_topic_refusal = any(normalize(m) in normalize(answer) for m in off_topic_markers)
 
     # --- Retrieval analizi: beklenen chunk getirildi mi, kaçıncı sırada, ona atıf yapıldı mı ---
     rank = None
@@ -103,6 +106,10 @@ def score_answer(
         reason = "" if refused else "ret etmedi"
         if refused and citations:
             reason = "ret ama atıf var"
+        # Şirketle ilgili ama dokümanda olmayan soru "konu dışı" diye reddedilmemeli
+        # (kullanıcıya "şirketle ilgili değil" demek yanıltıcı) — golden set v1 bulgusu
+        if question.category == "yok" and off_topic_refusal:
+            reason = "konu dışı sandı"
         passed = reason == ""
     elif question.category == "sohbet":
         # Selamlaşma: doğal karşılık vermeli; ne atıf ne de ret beklenir
@@ -110,6 +117,17 @@ def score_answer(
         passed = reason == ""
     else:
         raise ValueError(f"Bilinmeyen kategori: {question.category}")
+
+    # --- Biçim kontrolleri (tüm kategoriler; golden set v1 bulguları) ---
+    # İçerik doğru olsa bile kullanıcı deneyimini bozan biçim hataları da başarısız sayılır.
+    # Soru tekrarı yalnızca anlamlı uzunluktaki sorularda aranır: "Merhaba"ya "Merhaba!" demek
+    # tekrar değil, doğal bir karşılıktır (selamlaşma kategorisi de bu yüzden hariç).
+    long_question = len(question.question) >= 15 and question.category != "sohbet"
+    if passed and long_question and normalize(question.question) in normalize(answer):
+        passed, reason = False, "soruyu tekrar etti"
+    if passed and "**" in answer:
+        # Arayüz cevabı düz metin gösterir; Markdown kalın işareti yıldız olarak görünür
+        passed, reason = False, "markdown kullandı"
 
     return Score(
         passed=passed,

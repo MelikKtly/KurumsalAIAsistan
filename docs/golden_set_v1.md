@@ -54,3 +54,18 @@ Bu sorular geliştirme sırasında **hiç kullanılmadı**; prompt ve hakem bunl
 - **v3 prompt:** "Dokümanda yok" ve "konu dışı" kurallarının sırasını ve tanımını netleştir ("İK, yan haklar, maaş, şirket bilgisi gibi konular dokümanda yoksa bile *şirketle ilgilidir*"). Önce geliştirme setine (`questions.yaml`) ciro/kreş türü yeni sorular eklenmeli, v3 orada v2 ile karşılaştırılmalı, ardından golden set **bir kez** yeniden ölçülmeli.
 - **Biçim:** Prompta "soruyu tekrar etme, Markdown kullanma" talimatı eklenebilir.
 - Bu set Faz 4.6'daki otomatik eval scriptinin girdisi olacak (must_contain + expected_answer_type).
+
+## Takip: v3 prompt denemesi (sonuç: geri alındı)
+
+Öneri uygulandı ve **geliştirme setinde** ölçüldü (golden set'e dokunulmadan):
+
+1. Puanlama sıkılaştırıldı: "dokümanda yok" sorusunda konu dışı reddi, soru tekrarı ve Markdown artık başarısız sayılıyor.
+2. Geliştirme setine golden set'tekilerden farklı 4 yeni "şirketle ilgili ama dokümanda yok" sorusu eklendi (çalışan sayısı, ulaşım servisi, yıl sonu primi, annelik izni).
+3. v3 promptu (sıralı karar akışı + biçim kuralları) yazıldı ve v2 ile karşılaştırıldı: [prompt_karsilastirma_v2_v3.md](prompt_karsilastirma_v2_v3.md).
+
+**Sonuç: v3 daha kötü (28/33) — v2 aktif kaldı (30/33).**
+
+- v2, yeni geliştirme sorularında "konu dışı sanma" hatasını **tekrarlamadı** (çalışan sayısı, prim → doğru şekilde "dokümanlarda yer almıyor"). Golden set'teki hata (ciro, kreş) benzer sorularla yeniden üretilemedi; genel bir kural sorunundan çok o sorulara özgü olabilir.
+- v3 yeni hatalar getirdi: gereksiz bilgi sıralama ve atıf ("kaç kişi çalışıyor?"), "Hayır" demeden cevaplama (sertifika), ortalama süre 8.8 → 11.2 sn.
+- **Her iki versiyonda uydurma:** "Annelik izni kaç hafta?" → v2 "12 haftadır [2]", v3 "14 iş günüdür" (dokümanda yalnızca babalık izni var). Üretimde **groundedness hakemi bunu yakaladı** (`unsupported_claims=['Annelik izni 12 haftadır.']`) → kullanıcı uyarıyla görür.
+- Ders: küçük modelde prompt kurallarını artırmak bir hatayı düzeltirken başka hataları tetikleyebilir (Faz 1.10'daki 1.7B deneyimine benzer); her değişiklik ölçülmeden devreye alınmamalı. Hakem, prompttan bağımsız bir güvenlik ağı olarak değerini gösterdi.
