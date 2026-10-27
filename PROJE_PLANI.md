@@ -122,7 +122,7 @@ Claude Code yeni bir oturumda bu konuşmanın geçmişini bilmiyor, o yüzden bu
 - [x] 3. "Bilmiyorum" fallback'i — v2 promptunun sabit cevapları + kodda `classify_answer()`: API cevabında `answer_type` (`answered` / `not_found` / `off_topic` / `uncited`) ve kaynak başına `cited`. Arayüz yalnızca `answered` cevaplarda kaynak gösterir, atıf yapılmayan kaynakları soluklaştırır
 - [x] 4. Groundedness kontrolü — `app/retrieval/groundedness.py` (LLM-as-judge, `app/prompts/groundedness/v1.yaml`). Hakem desteksiz iddiaları listeler, karar kodda verilir (`grounded = not unsupported_claims`). `.env`: `GROUNDEDNESS_CHECK` (varsayılan **açık**; yalnızca kaynaklı cevaplarda çalışır; ölçülen ek süre p50 ~7 sn → kaynaklı cevaplarda süre ~2 katı, bkz. Faz 2.5). Hakem 22 vakalık sette ölçüldü ([docs/groundedness_degerlendirme.md](docs/groundedness_degerlendirme.md)): 3 iterasyonda uydurma yakalama 6/12 → 8/12 → 12/12, yanlış alarm 0/10
 - [x] 5. Latency + token loglama — `app/observability.py`: adım adım süre (retrieval / üretim / hakem / toplam) ve LLM çağrısı başına girdi/çıktı token. API cevabında `metrics`, her istek `logs/requests.jsonl`'a bir JSON satırı; özet: `scripts/log_stats.py`. İlk ölçüm (29 soru, hakem açık): toplam p50 10.5 sn / p95 22.1 sn; üretim p50 7.1 sn, hakem p50 7.4 sn, retrieval p50 0.2 sn; istek başına ~2.400 token (%98'i girdi)
-- [ ] 6. Maliyet hesabı
+- [x] 6. Maliyet hesabı — `app/pricing.yaml` (model fiyatları, 1M token başına) + `app/cost.py`. Her istekte gerçek maliyet (Ollama → $0) ve referans API modeliyle tahmini maliyet (`.env`: `COST_REFERENCE_MODEL`, varsayılan `claude-sonnet-5-5`); API cevabında `metrics.cost`, logda da var. `log_stats.py` loglanan kullanımı tüm API modelleriyle fiyatlar: istek başı ~Opus 5.5 $0.0104 / Sonnet 5.5 $0.0052 / Haiku 5.5 $0.00026 (hakem dahil; qwen tokenizer'ına göre yaklaşık)
 - [ ] 7. (Opsiyonel) LangSmith
 - [ ] 8. Golden set
 
@@ -135,6 +135,7 @@ Claude Code yeni bir oturumda bu konuşmanın geçmişini bilmiyor, o yüzden bu
 | PDF okuma | `pypdf` (LangChain `PyPDFLoader` yerine) | `langchain-community` sunset edildi |
 | Prompt yönetimi | Versiyonlu YAML dosyaları (`app/prompts/`) | Çok satırlı metin okunaklı; açıklama ve sabit cevaplar aynı dosyada; versiyonlar kod değişmeden `.env` ile seçilir ve karşılaştırılabilir |
 | Groundedness kararı | LLM yalnızca desteksiz iddiaları listeler; `grounded` kodda türetilir | LLM kararı alanı ilk sıradayken düşünmeden karar veriyor, sonrakinde listeyle çelişen karar veriyordu (ölçüldü) |
+| Maliyet (lokal model) | Gerçek maliyet $0 + referans API modeliyle tahmini maliyet | Ollama ücretsiz; plan "token × fiyat" istiyor → "API'ye geçersek ne öderiz" sorusunu cevaplamak için |
 | Frontend | FastAPI'nin sunduğu tek sayfa HTML/JS, kütüphanesiz | Odak backend+AI; ayrı frontend projesi gerektirmez, kendi API'mizi tüketir |
 | Gerçek PDF'ler | `data/pdfs/` git'e girmez | Kurumsal belgeler repoya sızmasın |
 

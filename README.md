@@ -69,10 +69,10 @@ uv run python -m scripts.eval_groundedness
 
 Kaynaklı cevaplar varsayılan olarak ikinci bir LLM çağrısıyla (hakem) bağlama göre doğrulanır; bu, kaynaklı cevapların süresini yaklaşık ikiye katlar (ölçülen hakem süresi p50 ~7 sn). Kapatmak için `.env`'de `GROUNDEDNESS_CHECK=false`.
 
-Her `/ask` isteğinin adım adım süresi ve token kullanımı API cevabında (`metrics`) döner ve `logs/requests.jsonl`'a yazılır. Özet için:
+Her `/ask` isteğinin adım adım süresi, token kullanımı ve maliyet tahmini (`app/pricing.yaml` fiyatlarıyla) API cevabında (`metrics`) döner ve `logs/requests.jsonl`'a yazılır. Özet için:
 
 ```bash
-uv run python -m scripts.log_stats            # p50/p95 süreler, ortalama token, cevap türleri
+uv run python -m scripts.log_stats            # p50/p95 süreler, ortalama token, maliyet projeksiyonu, cevap türleri
 ```
 
 ## Test

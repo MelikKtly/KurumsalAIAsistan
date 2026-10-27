@@ -1,0 +1,16 @@
+# Model fiyatları: 1 milyon token başına USD (girdi / çıktı).
+# Kaynak: Anthropic fiyat tablosu, 2026-10-06 itibarıyla. Fiyatlar değişirse yalnızca bu dosya güncellenir.
+#
+# Not: Token sayıları cevabı üreten modelin tokenizer'ından gelir (şu an qwen3). Claude'un
+# tokenizer'ı aynı metni farklı sayıda token'a bölebilir; API modelleri için hesaplanan
+# maliyetler bu yüzden YAKLAŞIK tahmindir ("bu istek o modelle yapılsaydı ~ne tutardı").
+
+models:
+  # Lokal modeller (Ollama): API ücreti yok
+  qwen3:8b: {input_per_mtok: 0.0, output_per_mtok: 0.0}
+  qwen3:1.7b: {input_per_mtok: 0.0, output_per_mtok: 0.0}
+
+  # Claude API (Anthropic birinci taraf fiyatları)
+  claude-opus-5-5: {input_per_mtok: 4.00, output_per_mtok: 20.00}
+  claude-sonnet-5-5: {input_per_mtok: 2.00, output_per_mtok: 10.00}
+  claude-haiku-5-5: {input_per_mtok: 0.10, output_per_mtok: 0.50}  # 100K token'a kadar olan promptlar için

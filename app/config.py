@@ -46,6 +46,9 @@ class Settings(BaseSettings):
     # --- Gözlemlenebilirlik ---
     # Her /ask isteğinin süre ve token ölçümleri bu dosyaya bir JSON satırı olarak eklenir
     request_log_path: str = "logs/requests.jsonl"
+    # Maliyet tahmini için referans API modeli (fiyatlar: app/pricing.yaml).
+    # Lokal model ücretsiz olduğu için "bu istek bu modelle yapılsaydı ne tutardı" hesaplanır.
+    cost_reference_model: str = "claude-sonnet-5-5"
 
 
 # lru_cache: fonksiyon ilk çağrıldığında Settings oluşturulur (.env okunur), sonraki

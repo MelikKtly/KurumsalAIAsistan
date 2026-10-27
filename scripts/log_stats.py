@@ -1,7 +1,7 @@
 """İstek logundan (logs/requests.jsonl) performans özeti çıkarır.
 
-Her adım için medyan (p50) ve p95 süre, ortalama token kullanımı, cevap türü
-dağılımı ve hata sayısını yazdırır.
+Her adım için medyan (p50) ve p95 süre, ortalama token kullanımı, maliyet
+projeksiyonu, cevap türü dağılımı ve hata sayısını yazdırır.
 
 Kullanım:
     uv run python -m scripts.log_stats
@@ -15,6 +15,8 @@ from collections import Counter
 from pathlib import Path
 
 from app.config import get_settings
+from app.cost import cost_usd, load_prices
+from app.observability import TokenUsage
 
 
 def percentile(values: list[float], p: float) -> float:
@@ -67,6 +69,17 @@ def main() -> None:
         if usages:
             avg = {k: statistics.mean(u[k] for u in usages) for k in ("input_tokens", "output_tokens", "total_tokens")}
             print(f"{label:<20} {avg['input_tokens']:>8.0f} {avg['output_tokens']:>8.0f} {avg['total_tokens']:>8.0f}")
+
+    # --- Maliyet projeksiyonu: loglanan gerçek token kullanımı her API modeliyle ne tutardı? ---
+    # Her isteğin toplam (cevap + hakem) token'ı fiyat tablosundaki her modelle fiyatlanır.
+    usages = [TokenUsage(**{k: r["metrics"]["total_tokens"][k] for k in ("input_tokens", "output_tokens")}) for r in ok]
+    print(f"\n{'Maliyet projeksiyonu':<22} {'istek başı':>12} {'1.000 istek':>12}")
+    for model, price in load_prices().items():
+        if price.input_per_mtok == 0:  # Lokal (ücretsiz) modelleri atla
+            continue
+        per_request = statistics.mean(cost_usd(u, model) for u in usages)
+        print(f"{model:<22} {f'${per_request:.5f}':>12} {f'${per_request * 1000:.2f}':>12}")
+    print("(Yaklaşık: token sayıları qwen tokenizer'ından; Claude tokenizer'ı farklı sayabilir)")
 
     # --- Cevap türleri ve hakem sonuçları ---
     print("\nCevap türleri:", dict(Counter(r["answer_type"] for r in ok)))

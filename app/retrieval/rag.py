@@ -14,6 +14,7 @@ from langchain_chroma import Chroma
 from pydantic import BaseModel
 
 from app.config import get_settings
+from app.cost import estimate_cost
 from app.llm import get_llm
 from app.observability import RequestMetrics, TokenUsage, timer
 from app.prompts.loader import PromptSpec, load_prompt
@@ -179,6 +180,11 @@ def answer_question(
                 grounding = check_groundedness(question, answer, documents, llm=llm)
             grounding_ms = grounding_t["ms"]
 
+    # Toplam token (cevap + varsa hakem) üzerinden maliyet: hem gerçek model hem referans API modeli
+    settings = get_settings()
+    total_usage = generation.usage + (grounding.usage if grounding else TokenUsage())
+    cost = estimate_cost(total_usage, settings.llm_model, settings.cost_reference_model)
+
     return RAGAnswer(
         question=question,
         answer=answer,
@@ -193,5 +199,6 @@ def answer_question(
             total_ms=total_t["ms"],
             generation_tokens=generation.usage,
             grounding_tokens=grounding.usage if grounding else None,
+            cost=cost,
         ),
     )

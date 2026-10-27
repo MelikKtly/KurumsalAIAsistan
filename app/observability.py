@@ -51,6 +51,15 @@ class TokenUsage(BaseModel):
         )
 
 
+class CostEstimate(BaseModel):
+    """Bir isteğin maliyet tahmini (USD)."""
+
+    model: str  # İsteği gerçekten işleyen model
+    usd: float | None  # Gerçek maliyet (lokal model → 0); None: model fiyat tablosunda yok
+    reference_model: str  # Karşılaştırma için API modeli (.env: COST_REFERENCE_MODEL)
+    reference_usd: float | None  # Aynı istek bu modelle yapılsaydı yaklaşık maliyet
+
+
 class RequestMetrics(BaseModel):
     """Bir /ask isteğinin ölçümleri (süreler milisaniye)."""
 
@@ -60,6 +69,7 @@ class RequestMetrics(BaseModel):
     total_ms: float
     generation_tokens: TokenUsage
     grounding_tokens: TokenUsage | None = None
+    cost: CostEstimate | None = None  # Maliyet tahmini (hesaplama: app/cost.py)
 
     @computed_field
     @property
