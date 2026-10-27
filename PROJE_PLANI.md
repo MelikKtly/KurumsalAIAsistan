@@ -120,7 +120,7 @@ Claude Code yeni bir oturumda bu konuşmanın geçmişini bilmiyor, o yüzden bu
 - [x] 1. Prompt ayrı dosyada — `app/prompts/rag/<versiyon>.yaml`, `app/prompts/loader.py` ile `ChatPromptTemplate`'e çevrilir; değişken uyuşmazlığında hata verir. Aktif versiyon `.env`'de `RAG_PROMPT_VERSION`; cevapta `prompt_version` döner. v1 = Faz 1.6 sade prompt, v2 = Faz 1.10 kurallı prompt
 - [x] 2. Prompt versiyonlarını karşılaştırma — `scripts/eval_prompts.py`, 29 soruluk set (`data/eval/questions.yaml`), kural tabanlı puanlama (`app/evaluation/scoring.py`). Sonuç [docs/prompt_karsilastirma.md](docs/prompt_karsilastirma.md): v1 %76, v2 %97 (şirket sorularında eşit; fark selamlaşma/konu dışında)
 - [x] 3. "Bilmiyorum" fallback'i — v2 promptunun sabit cevapları + kodda `classify_answer()`: API cevabında `answer_type` (`answered` / `not_found` / `off_topic` / `uncited`) ve kaynak başına `cited`. Arayüz yalnızca `answered` cevaplarda kaynak gösterir, atıf yapılmayan kaynakları soluklaştırır
-- [ ] 4. Groundedness kontrolü
+- [x] 4. Groundedness kontrolü — `app/retrieval/groundedness.py` (LLM-as-judge, `app/prompts/groundedness/v1.yaml`). Hakem desteksiz iddiaları listeler, karar kodda verilir (`grounded = not unsupported_claims`). `.env`: `GROUNDEDNESS_CHECK` (varsayılan **açık**; cevap başına ~1–5 sn ek süre, yalnızca kaynaklı cevaplarda çalışır). Hakem 22 vakalık sette ölçüldü ([docs/groundedness_degerlendirme.md](docs/groundedness_degerlendirme.md)): 3 iterasyonda uydurma yakalama 6/12 → 8/12 → 12/12, yanlış alarm 0/10
 - [ ] 5. Latency + token loglama
 - [ ] 6. Maliyet hesabı
 - [ ] 7. (Opsiyonel) LangSmith
@@ -134,6 +134,7 @@ Claude Code yeni bir oturumda bu konuşmanın geçmişini bilmiyor, o yüzden bu
 | Embedding | `paraphrase-multilingual-MiniLM-L12-v2` | Lokal, ücretsiz, Türkçe destekli |
 | PDF okuma | `pypdf` (LangChain `PyPDFLoader` yerine) | `langchain-community` sunset edildi |
 | Prompt yönetimi | Versiyonlu YAML dosyaları (`app/prompts/`) | Çok satırlı metin okunaklı; açıklama ve sabit cevaplar aynı dosyada; versiyonlar kod değişmeden `.env` ile seçilir ve karşılaştırılabilir |
+| Groundedness kararı | LLM yalnızca desteksiz iddiaları listeler; `grounded` kodda türetilir | LLM kararı alanı ilk sıradayken düşünmeden karar veriyor, sonrakinde listeyle çelişen karar veriyordu (ölçüldü) |
 | Frontend | FastAPI'nin sunduğu tek sayfa HTML/JS, kütüphanesiz | Odak backend+AI; ayrı frontend projesi gerektirmez, kendi API'mizi tüketir |
 | Gerçek PDF'ler | `data/pdfs/` git'e girmez | Kurumsal belgeler repoya sızmasın |
 

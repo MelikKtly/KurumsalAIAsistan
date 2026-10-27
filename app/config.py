@@ -24,6 +24,10 @@ class Settings(BaseSettings):
     # Hangi prompt dosyasının kullanılacağı: app/prompts/rag/<versiyon>.yaml
     rag_prompt_version: str = "v2"
 
+    # Groundedness kontrolü: cevap üretildikten sonra ikinci bir LLM çağrısı (hakem)
+    # cevabın bağlama dayanıp dayanmadığını denetler. Açıkken her cevap ~2 kat yavaşlar.
+    groundedness_check: bool = True
+
     # --- Embedding (metni vektöre çeviren model) ---
     # Değiştirilirse Chroma'daki vektörler uyumsuz olur → ingest baştan yapılmalı
     embedding_model: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"

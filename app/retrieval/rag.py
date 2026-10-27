@@ -18,6 +18,8 @@ from app.config import get_settings
 from app.llm import get_llm
 from app.prompts.loader import PromptSpec, load_prompt
 from app.retrieval.citations import extract_citations, valid_refs
+from app.retrieval.context import format_context
+from app.retrieval.groundedness import GroundednessVerdict, check_groundedness
 from app.retrieval.retriever import retrieve
 from app.text import normalize
 
@@ -54,23 +56,9 @@ class RAGAnswer(BaseModel):
     # hangilerinin kullanıldığı Source.cited ile belli)
     sources: list[Source]
     prompt_version: str  # Bu cevabı hangi prompt versiyonu üretti (loglama/karşılaştırma için)
-
-
-def format_context(documents: list[Document]) -> str:
-    """Chunk'ları LLM'in [n] ile atıf yapabileceği numaralı bloklara çevirir."""
-    # Üretilen metin örneği:
-    #   [1] (ornek_ik_el_kitabi.pdf, sayfa 2)
-    #   4. Yıllık İzin ...
-    #
-    #   [2] (ornek_ik_el_kitabi.pdf, sayfa 1)
-    #   ...
-    # LLM'e "kaynağı [n] ile belirt" dediğimiz için numaralar buradan geliyor.
-    blocks = []
-    for i, doc in enumerate(documents, start=1):
-        m = doc.metadata
-        # page metadata'da 0'dan başlıyor; insanlar için +1
-        blocks.append(f"[{i}] ({Path(m['source']).name}, sayfa {m['page'] + 1})\n{doc.page_content}")
-    return "\n\n".join(blocks)
+    # Hakemin kararı. None: kontrol kapalı, cevap kaynaklı değil (answered dışı) veya hakem
+    # geçerli bir karar üretemedi. İstemci None'ı "doğrulanmadı" olarak yorumlamalı.
+    groundedness: GroundednessVerdict | None = None
 
 
 def to_sources(documents: list[Document]) -> list[Source]:
@@ -145,6 +133,8 @@ def answer_question(
     llm: BaseChatModel | None = None,
     vector_store: Chroma | None = None,
     prompt: PromptSpec | None = None,
+    # None ise .env'deki GROUNDEDNESS_CHECK ayarı kullanılır
+    check_grounding: bool | None = None,
 ) -> RAGAnswer:
     """Soruya ilgili chunk'ları bulup LLM ile kaynaklı cevap üretir.
 
@@ -161,10 +151,21 @@ def answer_question(
     sources = to_sources(documents)
     for source in sources:
         source.cited = source.ref in cited_refs
+
+    # 4) (Opsiyonel) Groundedness: yalnızca dokümanlara dayandığını iddia eden cevaplar
+    # denetlenir. "Bilgi yok", konu dışı ve selamlaşma cevaplarında doğrulanacak iddia yok.
+    if check_grounding is None:
+        check_grounding = get_settings().groundedness_check
+    verdict = None
+    if check_grounding and answer_type == "answered":
+        # Hakem için de aynı LLM kullanılır (testlerde verilen sahte model dahil)
+        verdict = check_groundedness(question, answer, documents, llm=llm)
+
     return RAGAnswer(
         question=question,
         answer=answer,
         answer_type=answer_type,
         sources=sources,
         prompt_version=prompt.version,
+        groundedness=verdict,
     )

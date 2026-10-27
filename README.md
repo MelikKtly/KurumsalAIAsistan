@@ -61,6 +61,14 @@ Prompt versiyonlarını soru setinde karşılaştırmak (rapor `docs/`'a yazıl�
 uv run python -m scripts.eval_prompts --versions v1 v2
 ```
 
+Groundedness hakeminin güvenilirliğini ölçmek:
+
+```bash
+uv run python -m scripts.eval_groundedness
+```
+
+Kaynaklı cevaplar varsayılan olarak ikinci bir LLM çağrısıyla (hakem) bağlama göre doğrulanır; cevap başına ~1–5 sn ek süre. Kapatmak için `.env`'de `GROUNDEDNESS_CHECK=false`.
+
 ## Test
 
 ```bash

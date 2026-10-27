@@ -10,6 +10,7 @@
     --border: #e3e6eb; --accent: #2f5bea; --accent-soft: #e8eefe;
     --user: #2f5bea; --user-text: #ffffff; --error: #c62828; --error-soft: #fdecec;
     --highlight: #fff4cc;
+    --ok: #2e7d32; --warn: #8a5a00; --warn-soft: #fff6e0;
   }
   @media (prefers-color-scheme: dark) {
     :root {
@@ -17,6 +18,7 @@
       --border: #2b313c; --accent: #7c9cff; --accent-soft: #232c45;
       --user: #3b5bdb; --user-text: #ffffff; --error: #ff8a80; --error-soft: #3a1f1f;
       --highlight: #3d3720;
+      --ok: #81c784; --warn: #ffcc80; --warn-soft: #3a2f1a;
     }
   }
   * { box-sizing: border-box; }
@@ -63,6 +65,13 @@
   .source .tag { color: var(--muted); font-size: 12px; }
   /* "Bilgi yok" / konu dışı cevaplar: normal cevaptan ayırt edilsin diye kesikli çerçeve */
   .msg.bot.fallback { border-style: dashed; color: var(--muted); }
+  /* Groundedness (hakem) sonucu: doğrulandı → küçük yeşil not; uydurma şüphesi → sarı uyarı kutusu */
+  .verified { color: var(--ok); }
+  .warning {
+    margin-top: 10px; padding: 8px 10px; border-radius: 8px; font-size: 13px; white-space: normal;
+    background: var(--warn-soft); color: var(--warn); border: 1px solid var(--warn);
+  }
+  .warning ul { margin: 4px 0 0; padding-left: 18px; }
   .typing { color: var(--muted); font-style: italic; }
   form {
     border-top: 1px solid var(--border); background: var(--panel); padding: 12px 16px;
@@ -205,7 +214,20 @@
       const isFallback = body.answer_type === "not_found" || body.answer_type === "off_topic";
       const msg = el("div", isFallback ? "msg bot fallback" : "msg bot");
       renderAnswer(msg, body.answer, answerId);
-      msg.appendChild(el("div", "meta", `${seconds} sn`));
+      const meta = el("div", "meta", `${seconds} sn`);
+      msg.appendChild(meta);
+      // Groundedness sonucu (null: kontrol kapalı ya da cevap kaynaklı değil → hiçbir şey gösterme)
+      const g = body.groundedness;
+      if (g && g.grounded) {
+        meta.appendChild(el("span", "verified", " · ✓ kaynaklarla doğrulandı"));
+      } else if (g && !g.grounded) {
+        // Uydurma şüphesi: kullanıcıyı uyar ve hakemin desteksiz bulduğu ifadeleri listele
+        const warn = el("div", "warning", "⚠ Bu cevapta dokümanlarda bulunamayan ifadeler olabilir:");
+        const list = el("ul");
+        for (const claim of g.unsupported_claims) list.appendChild(el("li", null, claim));
+        warn.appendChild(list);
+        msg.appendChild(warn);
+      }
       // Kaynaklar sadece cevap gerçekten dokümanlara dayanıyorsa gösterilir. "Bilgi yok",
       // konu dışı veya selamlaşma cevaplarının altında alakasız kaynak kartları yanıltıcı olur.
       if (body.answer_type === "answered") {

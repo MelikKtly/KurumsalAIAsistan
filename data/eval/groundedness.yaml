@@ -1,0 +1,125 @@
+# Groundedness hakemini test etmek için cevap seti.
+#
+# Her vaka: bir soru + hazır bir cevap + cevabın bağlama dayanıp dayanmadığı (expected_grounded).
+# Bağlam, soru için gerçek retrieval ile getirilir (scripts/eval_groundedness.py);
+# hakem bu bağlam ile cevabı karşılaştırır. Cevaplar LLM'e ürettirilmez, sabittir —
+# böylece yalnızca hakemin başarısı ölçülür.
+#
+# Önemli: "grounded" = bağlama dayanıyor; "doğru cevap" ile aynı şey değil.
+#   - g07: soruyu cevaplamıyor ama bağlama dayanıyor → grounded
+#   - u05: gerçekte doğru bilgi ama getirilen bağlamda yok → grounded değil
+
+cases:
+  # ---------- Bağlama dayalı (expected_grounded: true) ----------
+  - id: g01
+    question: Yurt dışında yemek harcırahı ne kadar?
+    answer: Yurt dışında yemek harcırahı 75 Euro'dur [1].
+    expected_grounded: true
+    note: Doğrudan alıntı
+  - id: g02
+    question: Kıdemim 7 yıl, kaç gün yıllık iznim var?
+    answer: Kıdeminiz 7 yıl olduğu için yıllık izniniz 20 iş günüdür [1].
+    expected_grounded: true
+    note: Kuralın soruya uygulanması (çıkarım)
+  - id: g03
+    question: 12.000 TL'lik bir sertifikayı şirket ödedi, bitirince hemen ayrılabilir miyim?
+    answer: Hayır. Bedeli 10.000 TL'yi aşan sertifika programlarında, program bitiminden itibaren en az 1 yıl şirkette çalışma taahhüdü vardır [1].
+    expected_grounded: true
+    note: Çıkarım + olumsuz cevap
+  - id: g04
+    question: Hangi günler ofiste olmam gerekiyor?
+    answer: Salı ve Perşembe günleri ofiste olmanız gerekir [2].
+    expected_grounded: true
+    note: Doğrudan
+  - id: g05
+    question: Uzaktan çalışanlara internet desteği ne kadar?
+    answer: Uzaktan çalışanlara her ay 1.500 TL internet ve elektrik desteği ödenir; bu tutar ayın son iş günü hesaba yatırılır [1].
+    expected_grounded: true
+    note: Birden fazla doğru iddia
+  - id: g06
+    question: 6.000 TL'lik bir harcama için onay almam gerekir mi?
+    answer: Evet, 5.000 TL üzerindeki harcamalar için önceden departman direktörünün onayı gerekir [1].
+    expected_grounded: true
+    note: Çıkarım
+  - id: g07
+    question: Standart çalışma saatleri nedir?
+    answer: Çalışanlar mesailerine 07:30 ile 10:00 arasında herhangi bir saatte başlayabilir [2].
+    expected_grounded: true
+    note: Soruyu tam cevaplamıyor ama söylediği her şey bağlamda var
+  - id: g08
+    question: 3 gün hasta olursam doktor raporu gerekir mi?
+    answer: Evet, 2 günü aşan hastalık izinlerinde doktor raporu zorunludur [1].
+    expected_grounded: true
+    note: Çıkarım
+  - id: g09
+    question: Spor salonu için destek var mı?
+    answer: Evet, spor salonu üyeliği için aylık 1.000 TL'ye kadar destek sağlanır [1].
+    expected_grounded: true
+    note: Doğrudan
+  - id: g10
+    question: Kıdemim 3 yıl, kaç gün yıllık iznim var?
+    answer: 3 yıllık kıdemle yılda 14 iş günü ücretli yıllık izin hakkınız bulunuyor [1].
+    expected_grounded: true
+    note: Farklı kelimelerle ifade (parafraz)
+
+  # ---------- Bağlama dayanmayan (expected_grounded: false) ----------
+  - id: u01
+    question: Yurt dışında yemek harcırahı ne kadar?
+    answer: Yurt dışında yemek harcırahı 100 Euro'dur [1].
+    expected_grounded: false
+    note: Yanlış sayı
+  - id: u02
+    question: Kıdemim 7 yıl, kaç gün yıllık iznim var?
+    answer: Kıdeminiz 7 yıl olduğu için yıllık izniniz 26 iş günüdür [1].
+    expected_grounded: false
+    note: Yanlış çıkarım (yanlış kıdem aralığı)
+  - id: u03
+    question: 12.000 TL'lik bir sertifikayı şirket ödedi, bitirince hemen ayrılabilir miyim?
+    answer: Şirket tarafından ödenen sertifikayı bitirince hemen ayrılabilirsiniz. Bu durumda sertifikayı aldığınız tarihten itibaren en az bir yıl şirkette çalışmayı taahhüt edebilirsiniz [1].
+    expected_grounded: false
+    note: Faz 1'de 1.7B'nin gerçek cevabı — bağlamla çelişki
+  - id: u04
+    question: Standart çalışma saatleri nedir?
+    answer: Standart çalışma saatleri günde 9 saattir; çalışanlar 9 saat çalışma ve 2 saat dinlenme şeklinde çalışır [1].
+    expected_grounded: false
+    note: Faz 1'de 1.7B'nin gerçek uydurması
+  - id: u05
+    question: Standart çalışma saatleri nedir?
+    answer: Standart çalışma saatleri hafta içi 09:00 ile 18:00 arasındadır [1].
+    expected_grounded: false
+    note: Gerçekte doğru, ama retrieval bu chunk'ı getirmiyor → getirilen bağlamda yok
+  - id: u06
+    question: Spor salonu için destek var mı?
+    answer: Evet, şirket spor salonu üyeliğinin tamamını karşılar [1].
+    expected_grounded: false
+    note: Abartılmış / uydurma kapsam
+  - id: u07
+    question: Türkiye'nin başkenti neresi?
+    answer: Türkiye'nin başkenti Ankara'dır [1].
+    expected_grounded: false
+    note: Faz 2.2'de v1'in gerçek cevabı — genel kültürden bilgi
+  - id: u08
+    question: Yurt dışında yemek harcırahı ne kadar?
+    answer: Yurt dışında yemek harcırahı 75 Euro'dur; ayrıca yurt dışı konaklama için gecelik 200 Euro üst limit vardır [1].
+    expected_grounded: false
+    note: Doğru iddiaya eklenmiş uydurma iddia
+  - id: u09
+    question: Şirket araba veriyor mu?
+    answer: Şirket, kıdemi 5 yılı geçen çalışanlara şirket aracı tahsis eder [1].
+    expected_grounded: false
+    note: Tamamen uydurma
+  - id: u10
+    question: Uzaktan çalışanlara internet desteği ne kadar?
+    answer: Uzaktan çalışanlara her ay 1.500 TL internet desteği ödenir ve şirket ayrıca bir dizüstü bilgisayar verir [1].
+    expected_grounded: false
+    note: Doğru iddiaya eklenmiş uydurma iddia
+  - id: u11
+    question: Evden haftada kaç gün çalışabilirim?
+    answer: Haftada en fazla 4 gün evden çalışabilirsiniz [1].
+    expected_grounded: false
+    note: Yanlış sayı
+  - id: u12
+    question: Fazla mesai ücreti nasıl hesaplanır?
+    answer: Fazla mesai ücreti, normal saatlik ücretin yüzde 50'si olarak hesaplanır [1].
+    expected_grounded: false
+    note: İnce anlam kayması (%50 fazlası ≠ %50'si) — Faz 1'de 1.7B'nin yaptığı hata
