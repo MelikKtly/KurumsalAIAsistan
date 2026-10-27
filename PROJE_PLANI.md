@@ -6,7 +6,7 @@ Oct 22, 2026 · @Melik
 
 Dağınık kurumsal veri kaynaklarını (PDF, SQL, web) doğal dilde sorgulanabilir hale getiren bir RAG + Agent platformu kuruyoruz. Sistem bir soruya ilgili kaynaklardan bilgiyi bulup kaynak göstererek cevap veriyor; daha karmaşık isteklerde bir agent devreye girip birden fazla aracı (SQL sorgusu, vektör arama, dış API) sırayla kullanarak görevi tamamlıyor.
 
-Hedef: FastAPI (backend) ile LangChain/LangGraph (AI) mühendisliğini tek bir üründe birleştirip, hedeflenen senior AI engineer ilanının gereksinimlerini junior seviyesinden adım adım, küçültülmüş bir kapsamla karşılamak.
+Hedef: FastAPI (backend) ile LangChain/LangGraph (AI) mühendisliğini tek bir üründe birleştirmek; kapsamı küçültülmüş ama uçtan uca çalışan bir sistemi adım adım kurmak.
 
 ## Teknoloji Yığını
 
@@ -23,8 +23,6 @@ Hedef: FastAPI (backend) ile LangChain/LangGraph (AI) mühendisliğini tek bir �
 | Test | pytest | Test edilebilirlik |
 
 ## Yol Haritası
-
-&#91;embedded content: 4 faz · junior'dan backend+AI engineer'a\]
 
 Her faz kendi başına tamamlanabilir bir kazanım; bir sonraki faza geçmeden önce o fazın geçidi sağlanmalı.
 
@@ -86,7 +84,7 @@ Artık tüm parçaları gerçek, test edilebilir bir servise dönüştürüyoruz
 7. Docker Compose ile tüm sistemi (FastAPI + Postgres + Chroma) tek komutla ayağa kaldır
 8. README yaz: mimari diyagram, kurulum adımları, örnek istek/cevap, ölçülmüş sonuçlar (latency, maliyet, golden set doğruluk oranı)
 
-Bu faz bitince elinde demo değil, kurulumu, testi ve dokümantasyonu olan, CV'ye konabilecek tam bir servis var.
+Bu faz bitince elinde demo değil, kurulumu, testi ve dokümantasyonu olan tam bir servis var.
 
 ## İlerleme ve Kararlar
 
