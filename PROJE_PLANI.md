@@ -124,7 +124,9 @@ Claude Code yeni bir oturumda bu konuşmanın geçmişini bilmiyor, o yüzden bu
 - [x] 5. Latency + token loglama — `app/observability.py`: adım adım süre (retrieval / üretim / hakem / toplam) ve LLM çağrısı başına girdi/çıktı token. API cevabında `metrics`, her istek `logs/requests.jsonl`'a bir JSON satırı; özet: `scripts/log_stats.py`. İlk ölçüm (29 soru, hakem açık): toplam p50 10.5 sn / p95 22.1 sn; üretim p50 7.1 sn, hakem p50 7.4 sn, retrieval p50 0.2 sn; istek başına ~2.400 token (%98'i girdi)
 - [x] 6. Maliyet hesabı — `app/pricing.yaml` (model fiyatları, 1M token başına) + `app/cost.py`. Her istekte gerçek maliyet (Ollama → $0) ve referans API modeliyle tahmini maliyet (`.env`: `COST_REFERENCE_MODEL`, varsayılan `claude-sonnet-5-5`); API cevabında `metrics.cost`, logda da var. `log_stats.py` loglanan kullanımı tüm API modelleriyle fiyatlar: istek başı ~Opus 5.5 $0.0104 / Sonnet 5.5 $0.0052 / Haiku 5.5 $0.00026 (hakem dahil; qwen tokenizer'ına göre yaklaşık)
 - [~] 7. (Opsiyonel) LangSmith — **atlandı** (kullanıcı kararı): kendi ölçüm/log sistemimiz (2.5–2.6) yeterli ve kurumsal veri dışarı çıkmıyor. Gerekirse `.env.example`'daki `LANGSMITH_*` satırlarıyla kod değişikliği olmadan açılabilir
-- [ ] 8. Golden set
+- [x] 8. Golden set — `data/eval/golden_set.yaml`: geliştirmede hiç kullanılmamış 15 soru + referans cevaplar; `scripts/run_golden.py` üretim ayarlarıyla çalıştırır. Elle değerlendirme [docs/golden_set_v1.md](docs/golden_set_v1.md): **12/15 tam doğru (%80)**, 1 kısmen, 2 yanlış; uydurma 0/15. Yeni hata türü: dokümanda olmayan şirket soruları (ciro, kreş) "konu dışı" diye reddediliyor
+
+**Faz 2 tamamlandı (27 Ekim 2026).**
 
 ### Alınan kararlar
 

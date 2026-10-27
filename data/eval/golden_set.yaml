@@ -1,0 +1,87 @@
+# Golden set — sistemin genel doğruluğunu ölçmek için referans soru seti.
+#
+# data/eval/questions.yaml'dan FARKLI olarak: bu sorular geliştirme sırasında hiç
+# kullanılmadı (prompt ve hakem bunlara bakılarak ayarlanmadı), böylece ölçüm tarafsız kalır.
+# Bu set üzerinde prompt/model ayarı YAPILMAMALI; yalnızca ölçüm için kullanılır.
+#
+# Alanlar:
+#   reference_answer:     İdeal cevap (elle değerlendirmede ve ileride LLM hakeminde referans)
+#   must_contain:         Otomatik kontrol için cevapta geçmesi gerekenler ("a|b" = a veya b)
+#   expected_answer_type: answered | not_found | off_topic | uncited (API'deki answer_type)
+
+questions:
+  - id: g01
+    question: Doğum günümde izinli olabilir miyim?
+    reference_answer: Evet, tüm çalışanlara doğum günlerinde 1 gün ek izin verilir.
+    must_contain: ["1 gün|bir gün"]
+    expected_answer_type: answered
+  - id: g02
+    question: Masraflarımı en geç ne zamana kadar sisteme girmem gerekiyor?
+    reference_answer: Harcama tarihinden itibaren 30 gün içinde, fatura veya fişle birlikte; süreyi geçen masraflar ödenmez.
+    must_contain: ["30 gün"]
+    expected_answer_type: answered
+  - id: g03
+    question: Yemek kartıma günlük ne kadar yükleme yapılıyor?
+    reference_answer: İş günü başına 450 TL.
+    must_contain: ["450"]
+    expected_answer_type: answered
+  - id: g04
+    question: Özel sağlık sigortası ailemi de kapsıyor mu?
+    reference_answer: Evet, çalışanlar ve birinci derece aile üyeleri özel sağlık sigortası kapsamındadır; poliçe her yıl Mart'ta yenilenir.
+    must_contain: ["evet|kapsam|aile"]
+    expected_answer_type: answered
+  - id: g05
+    question: Şüpheli bir e-posta aldım, kime bildirmeliyim?
+    reference_answer: guvenlik@ornekteknoloji.com adresine bildirilmelidir.
+    must_contain: ["guvenlik@ornekteknoloji.com"]
+    expected_answer_type: answered
+  - id: g06
+    question: Yurt dışından yılda en fazla kaç gün uzaktan çalışabilirim?
+    reference_answer: Yılda en fazla 30 gün; İK'dan en az 2 hafta önce onay alınmalı.
+    must_contain: ["30"]
+    expected_answer_type: answered
+  - id: g07
+    question: Evlenirsem kaç gün izin alırım?
+    reference_answer: Evlilik durumunda 5 gün ücretli mazeret izni verilir.
+    must_contain: ["5 gün|beş gün"]
+    expected_answer_type: answered
+  - id: g08
+    question: İnsan Kaynakları'na nasıl ulaşabilirim?
+    reference_answer: ik@ornekteknoloji.com adresine e-posta veya dahili 2400 numaralı hat.
+    must_contain: ["ik@ornekteknoloji.com|2400"]
+    expected_answer_type: answered
+  - id: g09
+    question: Kullanmadığım yıllık izinler bir sonraki yıla devreder mi?
+    reference_answer: En fazla 5 günü bir sonraki yıla devredilebilir.
+    must_contain: ["5 gün|beş gün"]
+    expected_answer_type: answered
+  - id: g10
+    question: 20 yıldır bu şirketteyim, yıllık izin hakkım kaç gün?
+    reference_answer: 15 yıldan fazla kıdem için yılda 26 iş günü.
+    must_contain: ["26"]
+    expected_answer_type: answered
+  - id: g11
+    question: Şirket hangi yıl ve nerede kuruldu?
+    reference_answer: 2015 yılında İstanbul'da kuruldu.
+    must_contain: ["2015", "istanbul"]
+    expected_answer_type: answered
+  - id: g12
+    question: İzin talebimi kaç gün önceden yapmalıyım?
+    reference_answer: İK portalı üzerinden en az 5 iş günü önceden.
+    must_contain: ["5 iş günü|beş iş günü|5 gün"]
+    expected_answer_type: answered
+  - id: g13
+    question: Şirketin yıllık cirosu ne kadar?
+    reference_answer: Dokümanlarda yer almıyor.
+    must_contain: []
+    expected_answer_type: not_found
+  - id: g14
+    question: Kreş yardımı var mı?
+    reference_answer: Dokümanlarda yer almıyor.
+    must_contain: []
+    expected_answer_type: not_found
+  - id: g15
+    question: Bana iyi bir kitap önerir misin?
+    reference_answer: Kapsam dışı; yalnızca şirket dokümanlarıyla ilgili sorular cevaplanır.
+    must_contain: []
+    expected_answer_type: off_topic

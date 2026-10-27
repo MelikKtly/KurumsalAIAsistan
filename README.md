@@ -61,6 +61,12 @@ Prompt versiyonlarını soru setinde karşılaştırmak (rapor `docs/`'a yazıl�
 uv run python -m scripts.eval_prompts --versions v1 v2
 ```
 
+Golden set'i (geliştirmede kullanılmamış 15 soru) üretim ayarlarıyla çalıştırmak:
+
+```bash
+uv run python -m scripts.run_golden
+```
+
 Groundedness hakeminin güvenilirliğini ölçmek:
 
 ```bash
