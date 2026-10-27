@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 import httpx
@@ -8,6 +9,7 @@ from langchain_core.language_models import GenericFakeChatModel
 from langchain_core.messages import AIMessage
 
 from app.api.main import app, llm_dependency, vector_store_dependency
+from app.config import get_settings
 from app.ingestion.pipeline import ingest_pdf
 from app.retrieval.rag import get_rag_prompt
 from app.vectorstore import get_vector_store
@@ -59,6 +61,22 @@ def test_ask_not_found_marks_no_source_as_cited(client):
     assert not any(src["cited"] for src in body["sources"])
 
 
+def test_ask_returns_metrics_and_writes_log(client):
+    body = client.post("/ask", json={"question": "Yurt dışı harcırah?"}).json()
+    m = body["metrics"]
+    # Her adımın süresi ölçülmüş olmalı; hakem testlerde kapalı → grounding yok
+    assert m["retrieval_ms"] >= 0 and m["generation_ms"] >= 0 and m["total_ms"] >= m["generation_ms"]
+    assert m["grounding_ms"] is None and m["grounding_tokens"] is None
+
+    # Log dosyasına tam bir JSON satırı eklenmiş olmalı
+    lines = open(get_settings().request_log_path, encoding="utf-8").read().splitlines()
+    assert len(lines) == 1
+    record = json.loads(lines[0])
+    assert record["status"] == "ok" and record["question"] == "Yurt dışı harcırah?"
+    assert record["metrics"]["total_ms"] == m["total_ms"]
+    assert "timestamp" in record
+
+
 def test_ask_returns_503_when_llm_unreachable(client):
     class DownLLM(GenericFakeChatModel):
         def _generate(self, *args, **kwargs):
@@ -67,6 +85,9 @@ def test_ask_returns_503_when_llm_unreachable(client):
     app.dependency_overrides[llm_dependency] = lambda: DownLLM(messages=iter([]))
     response = client.post("/ask", json={"question": "izin"})
     assert response.status_code == 503
+    # Hata da loglanmalı
+    record = open(get_settings().request_log_path, encoding="utf-8").read().splitlines()[-1]
+    assert '"status": "error"' in record
 
 
 def test_index_serves_chat_ui(client):

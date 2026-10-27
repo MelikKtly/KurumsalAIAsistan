@@ -14,6 +14,7 @@ from langchain_core.language_models import BaseChatModel
 from pydantic import BaseModel, Field
 
 from app.llm import get_llm
+from app.observability import TokenUsage
 from app.prompts.loader import PromptSpec, load_prompt
 from app.retrieval.context import format_context
 
@@ -49,28 +50,42 @@ def get_groundedness_prompt() -> PromptSpec:
     return load_prompt("groundedness", "v1")
 
 
+class GroundingResult(BaseModel):
+    """check_groundedness'in dönüşü: hakemin kararı + hakem çağrısının token kullanımı."""
+
+    # None: hakem şemaya uygun bir karar üretemedi (kontrol yapılamadı)
+    verdict: GroundednessVerdict | None
+    usage: TokenUsage
+
+
 def check_groundedness(
     question: str,
     answer: str,
     documents: list[Document],
     llm: BaseChatModel | None = None,
     prompt: PromptSpec | None = None,
-) -> GroundednessVerdict | None:
+) -> GroundingResult:
     """Cevabın verilen chunk'lara dayanıp dayanmadığını hakem LLM'e sorar.
 
-    Hakemin çıktısı şemaya uymazsa None döner (kontrol yapılamadı); bu durumda
+    Hakemin çıktısı şemaya uymazsa verdict=None döner (kontrol yapılamadı); bu durumda
     cevap engellenmez, sadece doğrulanmamış olarak kalır.
     """
     prompt = prompt or get_groundedness_prompt()
     # Hakeme, cevabı üreten modelin gördüğü bağlamın AYNISI verilir (aynı numaralarla),
     # böylece cevaptaki [n] atıfları da hakem için anlamlı olur.
-    chain = prompt.template | (llm or get_llm()).with_structured_output(JudgeOutput)
-    try:
-        judged = chain.invoke({"context": format_context(documents), "question": question, "answer": answer})
-    except ValueError:
-        # Model geçersiz JSON veya şemaya uymayan bir çıktı üretirse LangChain
-        # OutputParserException / pydantic ValidationError fırlatır (ikisi de ValueError'dan türer).
-        # Bağlantı hataları (Ollama kapalı) ValueError değildir; onlar yukarıya iletilir → API 503 döner.
-        return None
+    # include_raw=True: ayrıştırılmış nesneyle birlikte modelin ham mesajı da döner
+    # → {"raw": AIMessage, "parsed": JudgeOutput | None, "parsing_error": Exception | None}.
+    # Token sayıları ham mesajda olduğu için buna ihtiyacımız var. Bu modda ayrıştırma
+    # hataları exception fırlatmaz, parsing_error alanına yazılır.
+    chain = prompt.template | (llm or get_llm()).with_structured_output(JudgeOutput, include_raw=True)
+    # Bağlantı hataları (Ollama kapalı) burada yakalanmaz; yukarıya iletilir → API 503 döner.
+    result = chain.invoke({"context": format_context(documents), "question": question, "answer": answer})
+    usage = TokenUsage.from_message(result["raw"])
+
+    judged = result["parsed"]
+    if judged is None:
+        # Model geçersiz JSON veya şemaya uymayan bir çıktı üretti → karar yok
+        return GroundingResult(verdict=None, usage=usage)
     # Karar: hakem tek bir desteksiz iddia bile bulduysa cevap bağlama dayanmıyor
-    return GroundednessVerdict(**judged.model_dump(), grounded=not judged.unsupported_claims)
+    verdict = GroundednessVerdict(**judged.model_dump(), grounded=not judged.unsupported_claims)
+    return GroundingResult(verdict=verdict, usage=usage)

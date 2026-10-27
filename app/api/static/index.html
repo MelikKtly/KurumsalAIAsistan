@@ -214,7 +214,10 @@
       const isFallback = body.answer_type === "not_found" || body.answer_type === "off_topic";
       const msg = el("div", isFallback ? "msg bot fallback" : "msg bot");
       renderAnswer(msg, body.answer, answerId);
-      const meta = el("div", "meta", `${seconds} sn`);
+      // Süre + bu cevap için harcanan toplam token (cevap üretimi + varsa hakem).
+      // toLocaleString("tr-TR"): 1523 → "1.523"
+      const tokens = body.metrics.total_tokens.total_tokens.toLocaleString("tr-TR");
+      const meta = el("div", "meta", `${seconds} sn · ${tokens} token`);
       msg.appendChild(meta);
       // Groundedness sonucu (null: kontrol kapalı ya da cevap kaynaklı değil → hiçbir şey gösterme)
       const g = body.groundedness;

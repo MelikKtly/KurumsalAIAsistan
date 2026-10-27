@@ -43,6 +43,10 @@ class Settings(BaseSettings):
     # --- Retrieval ---
     top_k: int = 4  # Her soruda LLM'e verilecek en yakın parça sayısı
 
+    # --- Gözlemlenebilirlik ---
+    # Her /ask isteğinin süre ve token ölçümleri bu dosyaya bir JSON satırı olarak eklenir
+    request_log_path: str = "logs/requests.jsonl"
+
 
 # lru_cache: fonksiyon ilk çağrıldığında Settings oluşturulur (.env okunur), sonraki
 # çağrılarda aynı nesne döner. Böylece dosya her istekte tekrar okunmaz.

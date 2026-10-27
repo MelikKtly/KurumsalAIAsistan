@@ -19,7 +19,9 @@ from langchain_chroma import Chroma
 from langchain_core.language_models import BaseChatModel
 from pydantic import BaseModel, Field
 
+from app.config import get_settings
 from app.llm import get_llm
+from app.observability import append_request_log, timer
 from app.retrieval.rag import RAGAnswer, answer_question
 from app.vectorstore import get_vector_store
 
@@ -81,10 +83,38 @@ def ask(
     # min_length=1 "   " (sadece boşluk) girdisini yakalamaz; onu burada reddediyoruz
     if not request.question.strip():
         raise HTTPException(status_code=422, detail="Soru boş olamaz")
-    try:
-        return answer_question(request.question, llm=llm, vector_store=vector_store)
-    except (ConnectionError, httpx.ConnectError) as exc:
+    settings = get_settings()
+    # Hata durumunda da ne kadar beklendiğini loglayabilmek için tüm isteği ölç
+    with timer() as t:
+        try:
+            result = answer_question(request.question, llm=llm, vector_store=vector_store)
+        except (ConnectionError, httpx.ConnectError) as exc:
+            error = exc
+        else:
+            error = None
+
+    if error is not None:
+        append_request_log(
+            {"status": "error", "error": "llm_unreachable", "question": request.question, "total_ms": t["ms"]},
+            settings.request_log_path,
+        )
         # Ollama kapalıysa istemci httpx.ConnectError fırlatır. Kullanıcıya anlamsız bir
         # 500 yerine "servis geçici olarak kullanılamıyor" anlamındaki 503'ü açıklamayla dön.
-        # `from exc`: orijinal hata loglarda zincir olarak görünsün (hata ayıklama için).
-        raise HTTPException(status_code=503, detail="LLM servisine (Ollama) ulaşılamıyor") from exc
+        # `from error`: orijinal hata loglarda zincir olarak görünsün (hata ayıklama için).
+        raise HTTPException(status_code=503, detail="LLM servisine (Ollama) ulaşılamıyor") from error
+
+    # Başarılı istek: analiz için gereken alanlar (cevap metninin tamamı ve kaynaklar loglanmaz;
+    # amaç performans/maliyet ölçümü). model_dump: Pydantic nesnesini sözlüğe çevirir.
+    append_request_log(
+        {
+            "status": "ok",
+            "question": request.question,
+            "answer_type": result.answer_type,
+            "prompt_version": result.prompt_version,
+            "llm_model": settings.llm_model,
+            "grounded": result.groundedness.grounded if result.groundedness else None,
+            "metrics": result.metrics.model_dump(),
+        },
+        settings.request_log_path,
+    )
+    return result

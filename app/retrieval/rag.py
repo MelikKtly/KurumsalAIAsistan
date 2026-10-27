@@ -10,12 +10,12 @@ from typing import Literal
 
 from langchain_core.documents import Document
 from langchain_core.language_models import BaseChatModel
-from langchain_core.output_parsers import StrOutputParser
 from langchain_chroma import Chroma
 from pydantic import BaseModel
 
 from app.config import get_settings
 from app.llm import get_llm
+from app.observability import RequestMetrics, TokenUsage, timer
 from app.prompts.loader import PromptSpec, load_prompt
 from app.retrieval.citations import extract_citations, valid_refs
 from app.retrieval.context import format_context
@@ -59,6 +59,7 @@ class RAGAnswer(BaseModel):
     # Hakemin kararı. None: kontrol kapalı, cevap kaynaklı değil (answered dışı) veya hakem
     # geçerli bir karar üretemedi. İstemci None'ı "doğrulanmadı" olarak yorumlamalı.
     groundedness: GroundednessVerdict | None = None
+    metrics: RequestMetrics  # Adım adım süreler ve token kullanımı
 
 
 def to_sources(documents: list[Document]) -> list[Source]:
@@ -105,12 +106,19 @@ def get_rag_prompt() -> PromptSpec:
     return load_prompt("rag", get_settings().rag_prompt_version)
 
 
+class Generation(BaseModel):
+    """generate_answer'ın dönüşü: cevap metni + bu LLM çağrısının token kullanımı."""
+
+    text: str
+    usage: TokenUsage
+
+
 def generate_answer(
     question: str,
     documents: list[Document],
     llm: BaseChatModel | None = None,
     prompt: PromptSpec | None = None,
-) -> str:
+) -> Generation:
     """Verilen chunk'larla (retrieval yapmadan) cevap üretir.
 
     Aynı chunk'ları farklı prompt/model ile denemek için ayrı tutuldu.
@@ -118,12 +126,14 @@ def generate_answer(
     prompt = prompt or get_rag_prompt()
     # LCEL (LangChain Expression Language): `|` ile adımlar zincirlenir, her adımın
     # çıktısı bir sonrakinin girdisi olur:
-    #   prompt şablonu  → {context, question}'ı doldurup mesaj listesi üretir
-    #   LLM             → mesajları modele gönderir, AIMessage döner
-    #   StrOutputParser → AIMessage'tan sadece metni çıkarır
-    chain = prompt.template | (llm or get_llm()) | StrOutputParser()
+    #   prompt şablonu → {context, question}'ı doldurup mesaj listesi üretir
+    #   LLM            → mesajları modele gönderir, AIMessage döner
+    # (Önceden sona StrOutputParser ekleyip sadece metni alıyorduk; artık AIMessage'ın
+    # tamamını alıyoruz çünkü token sayıları mesajın usage_metadata alanında.)
+    chain = prompt.template | (llm or get_llm())
     # invoke: zinciri çalıştırır; sözlükteki anahtarlar prompttaki {değişken}'lere karşılık gelir
-    return chain.invoke({"context": format_context(documents), "question": question}).strip()
+    message = chain.invoke({"context": format_context(documents), "question": question})
+    return Generation(text=message.content.strip(), usage=TokenUsage.from_message(message))
 
 
 def answer_question(
@@ -142,24 +152,32 @@ def answer_question(
     versiyon geçilebilir.
     """
     prompt = prompt or get_rag_prompt()
-    # 1) Retrieval: en ilgili top_k chunk
-    documents = retrieve(question, vector_store=vector_store)
-    # 2) Generation: chunk'ları bağlam olarak verip cevap üret
-    answer = generate_answer(question, documents, llm=llm, prompt=prompt)
-    # 3) Cevabı sınıflandır ve hangi kaynaklara atıf yapıldığını işaretle
-    answer_type, cited_refs = classify_answer(answer, prompt, len(documents))
-    sources = to_sources(documents)
-    for source in sources:
-        source.cited = source.ref in cited_refs
+    # Her adım timer() ile ölçülür; t["ms"] bloğun süresi (milisaniye)
+    with timer() as total_t:
+        # 1) Retrieval: en ilgili top_k chunk
+        with timer() as retrieval_t:
+            documents = retrieve(question, vector_store=vector_store)
+        # 2) Generation: chunk'ları bağlam olarak verip cevap üret
+        with timer() as generation_t:
+            generation = generate_answer(question, documents, llm=llm, prompt=prompt)
+        answer = generation.text
+        # 3) Cevabı sınıflandır ve hangi kaynaklara atıf yapıldığını işaretle
+        answer_type, cited_refs = classify_answer(answer, prompt, len(documents))
+        sources = to_sources(documents)
+        for source in sources:
+            source.cited = source.ref in cited_refs
 
-    # 4) (Opsiyonel) Groundedness: yalnızca dokümanlara dayandığını iddia eden cevaplar
-    # denetlenir. "Bilgi yok", konu dışı ve selamlaşma cevaplarında doğrulanacak iddia yok.
-    if check_grounding is None:
-        check_grounding = get_settings().groundedness_check
-    verdict = None
-    if check_grounding and answer_type == "answered":
-        # Hakem için de aynı LLM kullanılır (testlerde verilen sahte model dahil)
-        verdict = check_groundedness(question, answer, documents, llm=llm)
+        # 4) (Opsiyonel) Groundedness: yalnızca dokümanlara dayandığını iddia eden cevaplar
+        # denetlenir. "Bilgi yok", konu dışı ve selamlaşma cevaplarında doğrulanacak iddia yok.
+        if check_grounding is None:
+            check_grounding = get_settings().groundedness_check
+        grounding = None
+        grounding_ms = None
+        if check_grounding and answer_type == "answered":
+            # Hakem için de aynı LLM kullanılır (testlerde verilen sahte model dahil)
+            with timer() as grounding_t:
+                grounding = check_groundedness(question, answer, documents, llm=llm)
+            grounding_ms = grounding_t["ms"]
 
     return RAGAnswer(
         question=question,
@@ -167,5 +185,13 @@ def answer_question(
         answer_type=answer_type,
         sources=sources,
         prompt_version=prompt.version,
-        groundedness=verdict,
+        groundedness=grounding.verdict if grounding else None,
+        metrics=RequestMetrics(
+            retrieval_ms=retrieval_t["ms"],
+            generation_ms=generation_t["ms"],
+            grounding_ms=grounding_ms,
+            total_ms=total_t["ms"],
+            generation_tokens=generation.usage,
+            grounding_tokens=grounding.usage if grounding else None,
+        ),
     )

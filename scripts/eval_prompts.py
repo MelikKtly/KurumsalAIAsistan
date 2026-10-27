@@ -49,7 +49,7 @@ def run(versions: list[str], questions_path: str) -> tuple[list[dict], dict]:
         row = {"q": q, "chunks": chunks, "results": {}}
         for v, prompt in prompts.items():
             start = time.perf_counter()  # Süre sadece LLM üretimini ölçer (retrieval hariç)
-            answer = generate_answer(q.question, documents, prompt=prompt)
+            answer = generate_answer(q.question, documents, prompt=prompt).text
             seconds = time.perf_counter() - start
             score = score_answer(q, answer, chunks, eval_set.refusal_markers)
             row["results"][v] = {"answer": answer, "seconds": seconds, "score": score}

@@ -67,7 +67,13 @@ Groundedness hakeminin güvenilirliğini ölçmek:
 uv run python -m scripts.eval_groundedness
 ```
 
-Kaynaklı cevaplar varsayılan olarak ikinci bir LLM çağrısıyla (hakem) bağlama göre doğrulanır; cevap başına ~1–5 sn ek süre. Kapatmak için `.env`'de `GROUNDEDNESS_CHECK=false`.
+Kaynaklı cevaplar varsayılan olarak ikinci bir LLM çağrısıyla (hakem) bağlama göre doğrulanır; bu, kaynaklı cevapların süresini yaklaşık ikiye katlar (ölçülen hakem süresi p50 ~7 sn). Kapatmak için `.env`'de `GROUNDEDNESS_CHECK=false`.
+
+Her `/ask` isteğinin adım adım süresi ve token kullanımı API cevabında (`metrics`) döner ve `logs/requests.jsonl`'a yazılır. Özet için:
+
+```bash
+uv run python -m scripts.log_stats            # p50/p95 süreler, ortalama token, cevap türleri
+```
 
 ## Test
 
@@ -86,6 +92,7 @@ app/
   prompts/     # Versiyonlu prompt dosyaları (rag/v1.yaml, rag/v2.yaml)
   config.py    # .env tabanlı ayarlar
 data/pdfs/     # Kaynak PDF'ler (git'e girmez)
+logs/          # İstek ölçümleri (requests.jsonl, git'e girmez)
 data/eval/     # Değerlendirme soru seti (questions.yaml)
 data/samples/  # Test için kurgusal örnek PDF (scripts/create_sample_pdf.py ile üretilir)
 scripts/       # Yardımcı betikler

@@ -50,7 +50,7 @@ def main() -> None:
         # Bağlam, gerçek sistemde olduğu gibi retrieval ile getirilir
         documents = retrieve(case.question)
         start = time.perf_counter()
-        verdict = check_groundedness(case.question, case.answer, documents)
+        verdict = check_groundedness(case.question, case.answer, documents).verdict
         seconds = time.perf_counter() - start
         # verdict None ise hakem geçerli bir karar üretemedi → hata sayılır
         got = None if verdict is None else verdict.grounded

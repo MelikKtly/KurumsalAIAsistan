@@ -7,6 +7,9 @@ __pycache__/
 # Ortam
 .env
 
+# Loglar (istek ölçümleri)
+logs/
+
 # Veri
 data/chroma/
 data/pdfs/*
