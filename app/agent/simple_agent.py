@@ -15,6 +15,7 @@ from langchain_core.tools import BaseTool
 from pydantic import BaseModel
 
 from app.agent.tools import TOOLS
+from app.config import get_settings
 from app.llm import get_agent_llm
 from app.observability import TokenUsage, timer
 from app.prompts.loader import load_prompt
@@ -30,12 +31,31 @@ class ToolStep(BaseModel):
 
 
 class AgentResult(BaseModel):
+    """Tüm agent türlerinin (tek adımlı, LangGraph, multi-agent) ortak sonuç yapısı."""
+
     question: str
     answer: str
     steps: list[ToolStep]  # Hangi araç, hangi argümanla, ne döndü — sırasıyla
     llm_calls: int
     tokens: TokenUsage
     total_ms: float
+    # Adım adım iz (LangGraph agent'ı doldurur): LLM kararları + araç çalışmaları
+    trace: list[dict] = []
+    # Neden durdu: "done" | "max_steps" (adım limiti) | "output_limit" (token sınırı)
+    stop_reason: str = "done"
+
+
+# Model token sınırına takılınca (düşünme bitmeden kesilince) kullanıcıya gösterilecek mesaj
+OUTPUT_LIMIT_ANSWER = "Model bu soru için cevap üretirken çıktı sınırına ulaştı; lütfen soruyu daha basit sorun."
+
+
+def hit_output_limit(message: AIMessage) -> bool:
+    """Model token sınırına takılıp araç çağrısı ya da cevap üretemeden kesildi mi?
+
+    Ollama, num_predict sınırına ulaşınca done_reason="length" döner. Düşünme modunda
+    kesilme genelde düşünce sırasında olur → içerik boş, araç çağrısı yok.
+    """
+    return message.response_metadata.get("done_reason") == "length" and not message.tool_calls
 
 
 def run_tool_calls(message: AIMessage, tools: list[BaseTool]) -> tuple[list[ToolMessage], list[ToolStep]]:
@@ -63,11 +83,13 @@ def run_simple_agent(
     question: str,
     llm: BaseChatModel | None = None,
     tools: list[BaseTool] | None = None,
+    prompt_version: str | None = None,  # None → .env'deki AGENT_PROMPT_VERSION
 ) -> AgentResult:
     tools = tools if tools is not None else TOOLS
     # bind_tools: araçların JSON şemalarını modele iletir; model artık tool_call üretebilir
     model = (llm or get_agent_llm()).bind_tools(tools)
-    messages: list[BaseMessage] = load_prompt("agent", "v1").template.format_messages(question=question)
+    prompt = load_prompt("agent", prompt_version or get_settings().agent_prompt_version)
+    messages: list[BaseMessage] = prompt.template.format_messages(question=question)
     tokens = TokenUsage()
     steps: list[ToolStep] = []
 
@@ -76,7 +98,7 @@ def run_simple_agent(
         first = model.invoke(messages)
         tokens += TokenUsage.from_message(first)
         llm_calls = 1
-        answer = first.content
+        answer = OUTPUT_LIMIT_ANSWER if hit_output_limit(first) else first.content
 
         if first.tool_calls:
             # 2) Araçları çalıştır, 3) sonuçlarla son cevabı üret

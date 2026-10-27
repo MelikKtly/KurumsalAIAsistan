@@ -41,5 +41,9 @@ def get_agent_llm() -> BaseChatModel:
         base_url=settings.ollama_base_url,
         temperature=0,
         reasoning=True,
+        # Çıktı token sınırı: sonsuz düşünme döngüsüne karşı koruma (bkz. config.agent_max_output_tokens)
+        num_predict=settings.agent_max_output_tokens,
+        # Ollama donarsa sonsuza kadar beklememek için (parçalar arası bekleme süresi)
+        client_kwargs={"timeout": settings.llm_read_timeout_s},
     )
 

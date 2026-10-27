@@ -46,11 +46,21 @@ class Settings(BaseSettings):
     # --- Agent (Faz 3) ---
     # Döviz kuru aracı: ücretsiz, anahtarsız Avrupa Merkez Bankası kurları (frankfurter.dev)
     exchange_api_url: str = "https://api.frankfurter.dev/v1/latest"
+    agent_prompt_version: str = "v1"  # app/prompts/agent/<versiyon>.yaml
     agent_max_steps: int = 6  # Agent'ın en fazla kaç LLM adımı atabileceği (sonsuz döngü koruması)
+    # Tek bir agent LLM çağrısının en fazla üretebileceği token (düşünme + cevap). Ölçüldü: normal
+    # çağrılar 100–500 çıktı token'ı; düşünme modunda model bazen bitmeyen bir düşünme döngüsüne
+    # giriyor (bir görev 11+ dk takıldı). max_steps bunu yakalamaz çünkü takılma TEK çağrının içinde.
+    agent_max_output_tokens: int = 2048
+    # Ollama'dan cevap parçaları arasında en fazla bekleme (sn). Toplam süre sınırı DEĞİLDİR: cevap
+    # parça parça (stream) geldiği için model ürettikçe sayaç sıfırlanır; yalnızca donma durumunu yakalar.
+    llm_read_timeout_s: float = 120
 
     # --- Gözlemlenebilirlik ---
     # Her /ask isteğinin süre ve token ölçümleri bu dosyaya bir JSON satırı olarak eklenir
     request_log_path: str = "logs/requests.jsonl"
+    # Agent çalışmalarının adım adım izi (her çalışma bir JSON satırı)
+    agent_log_path: str = "logs/agent.jsonl"
     # Maliyet tahmini için referans API modeli (fiyatlar: app/pricing.yaml).
     # Lokal model ücretsiz olduğu için "bu istek bu modelle yapılsaydı ne tutardı" hesaplanır.
     cost_reference_model: str = "claude-sonnet-5-5"

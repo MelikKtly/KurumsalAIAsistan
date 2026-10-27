@@ -39,3 +39,23 @@ class ScriptedToolModel:
     # LangGraph / LCEL zincirinde kullanılabilmesi için Runnable arayüzü
     def as_runnable(self):
         return RunnableLambda(self.invoke)
+
+
+class ScriptedStructuredModel:
+    """with_structured_output(..., include_raw=True) kullanan bileşenler için sahte model.
+
+    Her çağrıda sıradaki sözlüğü şemaya doldurup {"raw", "parsed", "parsing_error"} döndürür.
+    None verilirse modelin şemaya uymayan çıktı ürettiği durum taklit edilir.
+    """
+
+    def __init__(self, outputs: list[dict | None]):
+        self.outputs = list(outputs)
+
+    def with_structured_output(self, schema, include_raw: bool = False):
+        def run(_prompt_value):
+            data = self.outputs.pop(0)
+            raw = AIMessage(content="{}", usage_metadata={"input_tokens": 50, "output_tokens": 10, "total_tokens": 60})
+            parsed = None if data is None else schema(**data)
+            return {"raw": raw, "parsed": parsed, "parsing_error": None if data else ValueError("bozuk")}
+
+        return RunnableLambda(run)

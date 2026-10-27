@@ -56,13 +56,14 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--agent", choices=["simple", "graph", "multi"], default="graph")
     parser.add_argument("--tasks", default="data/eval/agent_tasks.yaml")
+    parser.add_argument("--prompt", help="Agent prompt versiyonu (varsayılan: .env AGENT_PROMPT_VERSION)")
     parser.add_argument("--out", required=True)
     args = parser.parse_args()
 
     run = get_runner(args.agent)
     rows = []
     for task in load_tasks(args.tasks):
-        result = run(task.question)
+        result = run(task.question, prompt_version=args.prompt)
         called = sorted({s.tool for s in result.steps})  # Çağrılan araçlar (tekrarlar tek sayılır)
         tools_ok = called == sorted(task.expected_tools)
         content_ok = contains_all(result.answer, task.must_contain)
@@ -75,8 +76,11 @@ def main() -> None:
     lines = [
         f"# Agent Değerlendirmesi: `{args.agent}`",
         "",
-        f"**Tarih:** {date.today().isoformat()} · **Model:** `{get_settings().llm_model}` · **Görev seti:** `{args.tasks}` ({n} görev)  ",
-        f"**Yeniden üretmek için:** `uv run python -m scripts.eval_agent --agent {args.agent} --out {args.out}`",
+        f"**Tarih:** {date.today().isoformat()} · **Model:** `{get_settings().llm_model}` · "
+        f"**Prompt:** `agent/{args.prompt or get_settings().agent_prompt_version}` · **Görev seti:** `{args.tasks}` ({n} görev)  ",
+        f"**Yeniden üretmek için:** `uv run python -m scripts.eval_agent --agent {args.agent}"
+        + (f" --prompt {args.prompt}" if args.prompt else "")
+        + f" --out {args.out}`",
         "",
         "| Ölçüt | Sonuç |",
         "| --- | --- |",

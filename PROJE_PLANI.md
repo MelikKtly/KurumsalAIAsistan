@@ -134,11 +134,11 @@ Claude Code yeni bir oturumda bu konuşmanın geçmişini bilmiyor, o yüzden bu
 - [x] 1. Vektör arama araç olarak — `app/agent/tools.py`: `search_documents` (Faz 1 retrieval'ı `@tool` ile sarıldı)
 - [x] 2. Tek araçlı, tek adımlı agent — `app/agent/simple_agent.py` (döngüsüz: karar → araç → cevap). LLM: Ollama `qwen3:8b` (ücretsiz; plandaki "Claude function calling" yerine). Bulgu: qwen3 düşünme modu kapalıyken araç çağıramıyor → agent için `get_agent_llm()` (reasoning=True)
 - [x] 3. İkinci araç: `get_exchange_rate` (frankfurter.dev, ücretsiz/anahtarsız ECB kurları). `data/eval/agent_tasks.yaml` (10 görev) + `scripts/eval_agent.py`. Sonuç [docs/agent_simple.md](docs/agent_simple.md): **7/10** — tek araçlı/araçsız görevler 7/7, iki araç gerektiren görevler **0/3** (model ilk turda yalnızca doküman aramasını çağırıyor, kura 2. turda ihtiyaç duyuyor ama tek adımlı yapı izin vermiyor; bir denemede kuru uydurdu: 10,35 TRY). Ortalama 44.6 sn/görev
-- [ ] 4. LangGraph state machine
-- [ ] 5. Çok adımlı görev senaryosu
-- [ ] 6. Adım adım loglama
-- [ ] 7. Supervisor + worker multi-agent
-- [ ] 8. Başarısız senaryolar, maksimum adım limiti
+- [x] 4. LangGraph state machine — `app/agent/graph.py`: agent (planla/değerlendir) → tools (araç çağır) → agent döngüsü, `finalize` (limit dolunca araçsız son cevap). İlk ölçüm: 9/10 (tek adımlı 7/10) ([docs/agent_graph.md](docs/agent_graph.md))
+- [x] 5. Çok adımlı görev senaryosu — `agent_tasks.yaml`'a a11 (yurt içi/yurt dışı harcırah karşılaştırması, TL) ve a12 (3 günlük yurt dışı harcırah toplamı) eklendi; agent prompt v2 (araçları kendin çağır, sayıları yalnızca araç sonuçlarından al)
+- [x] 6. Adım adım loglama — her LLM kararı (planlanan araçlar, süre, token) ve her araç çalışması (girdi, sonuç, süre) `trace` olarak; `logs/agent.jsonl`. a06 hatası bu izle bulundu: model kur aracını kendisi çağırmak yerine kullanıcıya "get_exchange_rate aracını kullanın" yazdı
+- [x] 7. Supervisor + worker multi-agent — `app/agent/multi_agent.py`: supervisor (araçsız, yapılandırılmış karar: önce düşünce sonra karar) ↔ worker (LangGraph agent'ı); tur limiti, geçersiz çıktıda güvenli bitiş
+- [x] 8. Başarısız senaryolar, maksimum adım limiti — `AGENT_MAX_STEPS` (6, finalize ile), multi-agent tur limiti, LangGraph `recursion_limit`. Gerçek ölçümde bulunan döngü: düşünme modunda bir görev tek LLM çağrısı içinde 11+ dk takıldı (adım limiti yakalayamaz) → `AGENT_MAX_OUTPUT_TOKENS=2048` (normal çağrı 100–500) + `done_reason="length"` tespiti (`stop_reason: output_limit`). Not: Ollama read timeout toplam süre sınırı değil (stream parçaları arası)
 
 ### Alınan kararlar
 

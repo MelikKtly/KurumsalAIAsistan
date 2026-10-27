@@ -19,3 +19,12 @@ tasks:
   # Araç gerektirmeyen
   - {id: a09, question: "Merhaba, nasılsın?", expected_tools: [], must_contain: []}
   - {id: a10, question: "Teşekkürler, çok yardımcı oldun.", expected_tools: [], must_contain: []}
+  # Faz 3.5 — çok adımlı senaryolar: dokümandan bilgi bul + dış kaynaktan veri çek + karşılaştır/özetle
+  - id: a11
+    question: "Yurt dışı günlük yemek harcırahı ile yurt içi günlük yemek harcırahını TL cinsinden karşılaştır; hangisi daha yüksek ve fark ne kadar?"
+    expected_tools: [search_documents, get_exchange_rate]
+    must_contain: ["75", "1.200|1200", "yurt dışı"]
+  - id: a12
+    question: "Yurt dışında 3 günlük bir iş seyahatinde toplam yemek harcırahım kaç TL eder?"
+    expected_tools: [search_documents, get_exchange_rate]
+    must_contain: ["225|3 ×|3 x|3x"]

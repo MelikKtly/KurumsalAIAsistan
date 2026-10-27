@@ -19,6 +19,7 @@ def isolated_settings(monkeypatch, tmp_path):
     monkeypatch.setenv("GROUNDEDNESS_CHECK", "false")
     # İstek logu gerçek logs/ klasörüne değil, teste özel geçici bir dosyaya yazılsın
     monkeypatch.setenv("REQUEST_LOG_PATH", str(tmp_path / "requests.jsonl"))
+    monkeypatch.setenv("AGENT_LOG_PATH", str(tmp_path / "agent.jsonl"))
     # get_settings lru_cache'li: önceki bir okumadan kalan nesneyi temizle ki yeni değer okunsun
     get_settings.cache_clear()
     yield
