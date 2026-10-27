@@ -1,0 +1,12 @@
+# İmaja girmemesi gerekenler (boyut + gizlilik)
+.venv
+.git
+.env
+logs
+data/chroma
+data/pdfs
+data/app.db
+**/__pycache__
+.pytest_cache
+docs
+tests

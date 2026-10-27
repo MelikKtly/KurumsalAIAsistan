@@ -1,0 +1,64 @@
+# Tüm sistemi tek komutla ayağa kaldırır (Faz 4.7):
+#   docker compose up -d --build
+#   docker compose run --rm api python -m scripts.ingest data/samples/ornek_ik_el_kitabi.pdf   # ilk kurulumda bir kez
+#   → http://localhost:8000
+#
+# Ollama konteynerde DEĞİL: bilgisayardaki Ollama'ya host.docker.internal üzerinden bağlanılır
+# (Mac'te Metal GPU'yu kullanabilmesi için; konteyner içinde GPU'ya erişemez).
+
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file: .env.example  # Varsayılan ayarlar; aşağıdaki environment değerleri bunların üzerine yazar
+    environment:
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
+      DATABASE_URL: postgresql+psycopg://kurumsal:kurumsal@postgres:5432/kurumsal
+      CHROMA_HOST: chroma
+      CHROMA_PORT: "8000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"  # Linux'ta da çalışsın (Mac'te zaten tanımlı)
+    volumes:
+      - hf_models:/models  # Embedding modeli (~470 MB) bir kez iner, sonra buradan okunur
+      - ./logs:/app/logs   # İstek/agent logları bilgisayarda da görülebilsin
+    depends_on:
+      postgres:
+        condition: service_healthy  # Postgres hazır olmadan API başlamasın
+      chroma:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: kurumsal
+      POSTGRES_PASSWORD: kurumsal  # Yalnızca lokal geliştirme için; gerçek ortamda gizli değişken kullanılır
+      POSTGRES_DB: kurumsal
+    ports:
+      # Bilgisayardan psql / DB aracıyla bağlanmak için 5433 (5432'yi bilgisayardaki yerel PostgreSQL
+      # kullanıyor olabilir). Konteynerler arası bağlantı yine postgres:5432 üzerinden.
+      - "5433:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data  # Veri konteyner silinse de kalır
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kurumsal -d kurumsal"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  chroma:
+    image: chromadb/chroma:1.5.9  # Sürüm, Python istemcisiyle (chromadb 1.5.9) aynı olmalı
+    ports:
+      - "8001:8000"  # Bilgisayardan erişim için 8001 (8000'i API kullanıyor)
+    volumes:
+      - chroma_data:/data
+
+volumes:
+  pg_data:
+  chroma_data:
+  hf_models:

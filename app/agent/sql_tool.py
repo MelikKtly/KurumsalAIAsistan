@@ -95,7 +95,8 @@ def query_employees(sql: str) -> str:
     departman, uzaktan çalışma günü) gerektiğinde kullan. Şirket KURALLARI için search_documents kullan.
 
     Tablo: employees
-      id (int), full_name (metin, örn. 'Ayşe Yılmaz'), department (metin), city (metin: İstanbul/Ankara/İzmir),
+      id (int), full_name (metin, örn. 'Ayşe Yılmaz'), department (metin),
+      city (metin; değerler tam olarak Türkçe karakterlerle: 'İstanbul', 'Ankara', 'İzmir'),
       start_date (tarih, işe başlama), used_leave_days (int, bu yıl kullanılan yıllık izin günü),
       remote_days_per_week (int, haftalık uzaktan çalışma günü)
 
