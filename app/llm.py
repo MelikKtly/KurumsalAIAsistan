@@ -24,6 +24,9 @@ def get_llm() -> BaseChatModel:
         base_url=settings.ollama_base_url,
         temperature=0,  # Aynı soruya tutarlı cevap; RAG'de yaratıcılık istemiyoruz
         reasoning=False,  # qwen3'ün <think> modunu kapat: daha hızlı, cevapta düşünce metni olmaz
+        # Ollama cevap vermezse sonsuza kadar beklememek için (parçalar arası bekleme süresi).
+        # Ölçüldü: multi-agent değerlendirmesinde bir istek 5+ dk cevapsız kaldı ve süreç dondu.
+        client_kwargs={"timeout": settings.llm_read_timeout_s},
     )
 
 

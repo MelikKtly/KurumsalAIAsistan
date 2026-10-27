@@ -134,11 +134,22 @@ Claude Code yeni bir oturumda bu konuşmanın geçmişini bilmiyor, o yüzden bu
 - [x] 1. Vektör arama araç olarak — `app/agent/tools.py`: `search_documents` (Faz 1 retrieval'ı `@tool` ile sarıldı)
 - [x] 2. Tek araçlı, tek adımlı agent — `app/agent/simple_agent.py` (döngüsüz: karar → araç → cevap). LLM: Ollama `qwen3:8b` (ücretsiz; plandaki "Claude function calling" yerine). Bulgu: qwen3 düşünme modu kapalıyken araç çağıramıyor → agent için `get_agent_llm()` (reasoning=True)
 - [x] 3. İkinci araç: `get_exchange_rate` (frankfurter.dev, ücretsiz/anahtarsız ECB kurları). `data/eval/agent_tasks.yaml` (10 görev) + `scripts/eval_agent.py`. Sonuç [docs/agent_simple.md](docs/agent_simple.md): **7/10** — tek araçlı/araçsız görevler 7/7, iki araç gerektiren görevler **0/3** (model ilk turda yalnızca doküman aramasını çağırıyor, kura 2. turda ihtiyaç duyuyor ama tek adımlı yapı izin vermiyor; bir denemede kuru uydurdu: 10,35 TRY). Ortalama 44.6 sn/görev
-- [x] 4. LangGraph state machine — `app/agent/graph.py`: agent (planla/değerlendir) → tools (araç çağır) → agent döngüsü, `finalize` (limit dolunca araçsız son cevap). İlk ölçüm: 9/10 (tek adımlı 7/10) ([docs/agent_graph.md](docs/agent_graph.md))
+- [x] 4. LangGraph state machine — `app/agent/graph.py`: agent (planla/değerlendir) → tools (araç çağır) → agent döngüsü, `finalize` (limit dolunca araçsız son cevap). İlk ölçüm: 9/10 (tek adımlı 7/10). 12 görevde prompt karşılaştırması: v1 11/12, **v2 12/12** (görev başına 64 → 82 sn) ([v1](docs/agent_graph_v1.md), [v2](docs/agent_graph_v2.md)); varsayılan agent promptu v2
 - [x] 5. Çok adımlı görev senaryosu — `agent_tasks.yaml`'a a11 (yurt içi/yurt dışı harcırah karşılaştırması, TL) ve a12 (3 günlük yurt dışı harcırah toplamı) eklendi; agent prompt v2 (araçları kendin çağır, sayıları yalnızca araç sonuçlarından al)
 - [x] 6. Adım adım loglama — her LLM kararı (planlanan araçlar, süre, token) ve her araç çalışması (girdi, sonuç, süre) `trace` olarak; `logs/agent.jsonl`. a06 hatası bu izle bulundu: model kur aracını kendisi çağırmak yerine kullanıcıya "get_exchange_rate aracını kullanın" yazdı
 - [x] 7. Supervisor + worker multi-agent — `app/agent/multi_agent.py`: supervisor (araçsız, yapılandırılmış karar: önce düşünce sonra karar) ↔ worker (LangGraph agent'ı); tur limiti, geçersiz çıktıda güvenli bitiş
-- [x] 8. Başarısız senaryolar, maksimum adım limiti — `AGENT_MAX_STEPS` (6, finalize ile), multi-agent tur limiti, LangGraph `recursion_limit`. Gerçek ölçümde bulunan döngü: düşünme modunda bir görev tek LLM çağrısı içinde 11+ dk takıldı (adım limiti yakalayamaz) → `AGENT_MAX_OUTPUT_TOKENS=2048` (normal çağrı 100–500) + `done_reason="length"` tespiti (`stop_reason: output_limit`). Not: Ollama read timeout toplam süre sınırı değil (stream parçaları arası)
+- [x] 8. Başarısız senaryolar, maksimum adım limiti — ayrıca multi-agent ölçümünde bir LLM isteği 5+ dk cevapsız kaldı (süreç dondu) → tüm LLM bağlantılarına okuma zaman aşımı (`LLM_READ_TIMEOUT_S`). Önceki: — `AGENT_MAX_STEPS` (6, finalize ile), multi-agent tur limiti, LangGraph `recursion_limit`. Gerçek ölçümde bulunan döngü: düşünme modunda bir görev tek LLM çağrısı içinde 11+ dk takıldı (adım limiti yakalayamaz) → `AGENT_MAX_OUTPUT_TOKENS=2048` (normal çağrı 100–500) + `done_reason="length"` tespiti (`stop_reason: output_limit`). Not: Ollama read timeout toplam süre sınırı değil (stream parçaları arası)
+
+### Faz 4 durumu
+
+- [~] 1. Endpoint'ler — `/ask`, `/agent` (LangGraph agent, adımlar + maliyet döner), `/health`
+- [~] 2. Veritabanı — `app/db.py` (SQLAlchemy): `query_logs` (her /ask ve /agent isteği: soru, cevap, araçlar, süre, token, maliyet) + `employees`. `DATABASE_URL`: lokal SQLite, Docker'da PostgreSQL
+- [~] 3. SQL + vektör DB birlikte — `app/agent/sql_tool.py`: `query_employees` text-to-SQL aracı (tek SELECT, tablo izin listesi, CTE kontrolü, veritabanı seviyesinde salt-okunur, 50 satır sınırı); agent prompt v3; `agent_tasks.yaml`'a a13–a15 (kural + kişi verisi)
+- [~] 4. Yapılandırılmış logging — `app/logging_config.py`: JSON loglar stdout'a, `LOG_LEVEL`; her istek için request_id (X-Request-ID başlığı), süre, durum; agent araç çağrıları DEBUG, araç hataları WARNING, Ollama erişilemez ERROR
+- [ ] 5. pytest temel testler
+- [ ] 6. Golden set otomatik eval + GitHub Actions
+- [ ] 7. Docker Compose
+- [ ] 8. README
 
 ### Alınan kararlar
 

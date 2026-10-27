@@ -46,7 +46,7 @@ class Settings(BaseSettings):
     # --- Agent (Faz 3) ---
     # Döviz kuru aracı: ücretsiz, anahtarsız Avrupa Merkez Bankası kurları (frankfurter.dev)
     exchange_api_url: str = "https://api.frankfurter.dev/v1/latest"
-    agent_prompt_version: str = "v1"  # app/prompts/agent/<versiyon>.yaml
+    agent_prompt_version: str = "v2"  # app/prompts/agent/<versiyon>.yaml
     agent_max_steps: int = 6  # Agent'ın en fazla kaç LLM adımı atabileceği (sonsuz döngü koruması)
     # Tek bir agent LLM çağrısının en fazla üretebileceği token (düşünme + cevap). Ölçüldü: normal
     # çağrılar 100–500 çıktı token'ı; düşünme modunda model bazen bitmeyen bir düşünme döngüsüne
@@ -56,7 +56,12 @@ class Settings(BaseSettings):
     # parça parça (stream) geldiği için model ürettikçe sayaç sıfırlanır; yalnızca donma durumunu yakalar.
     llm_read_timeout_s: float = 120
 
+    # --- İlişkisel veritabanı (Faz 4.2) ---
+    # Lokal: SQLite dosyası (kurulum yok). Docker Compose: postgresql+psycopg://...@postgres:5432/...
+    database_url: str = "sqlite:///data/app.db"
+
     # --- Gözlemlenebilirlik ---
+    log_level: str = "INFO"  # DEBUG | INFO | WARNING | ERROR (yapılandırılmış JSON loglar, Faz 4.4)
     # Her /ask isteğinin süre ve token ölçümleri bu dosyaya bir JSON satırı olarak eklenir
     request_log_path: str = "logs/requests.jsonl"
     # Agent çalışmalarının adım adım izi (her çalışma bir JSON satırı)

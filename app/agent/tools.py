@@ -52,6 +52,8 @@ def get_exchange_rate(base: str, target: str = "TRY") -> str:
     return f"1 {base} = {rate} {target} (tarih: {data['date']}, kaynak: Avrupa Merkez Bankası)"
 
 
-# Agent'a verilen araç listesi
-TOOLS = [search_documents, get_exchange_rate]
+# Agent'a verilen araç listesi. query_employees (Faz 4.3) ayrı modülde: SQL güvenlik kontrolleri orada.
+from app.agent.sql_tool import query_employees  # noqa: E402  (araç tanımlarından sonra, listenin yanında)
+
+TOOLS = [search_documents, get_exchange_rate, query_employees]
 TOOLS_BY_NAME = {t.name: t for t in TOOLS}

@@ -7,12 +7,17 @@ from fastapi.testclient import TestClient
 from langchain_core.embeddings import DeterministicFakeEmbedding
 from langchain_core.language_models import GenericFakeChatModel
 from langchain_core.messages import AIMessage
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
-from app.api.main import app, llm_dependency, vector_store_dependency
+import app.agent.tools as tools_module
+from app.api.main import agent_llm_dependency, app, llm_dependency, vector_store_dependency
 from app.config import get_settings
+from app.db import QueryLog, get_engine
 from app.ingestion.pipeline import ingest_pdf
 from app.retrieval.rag import get_rag_prompt
 from app.vectorstore import get_vector_store
+from tests.fakes import ScriptedToolModel, tool_call
 
 SAMPLE_PDF = Path("data/samples/ornek_ik_el_kitabi.pdf")
 
@@ -30,8 +35,15 @@ def client(tmp_path):
     app.dependency_overrides[llm_dependency] = lambda: GenericFakeChatModel(
         messages=iter([AIMessage(content="75 Euro [1]")])
     )
-    yield TestClient(app)
+    # `with` bloğu uygulamanın lifespan'ini çalıştırır → init_db() tabloları oluşturur
+    with TestClient(app) as test_client:
+        yield test_client
     app.dependency_overrides.clear()
+
+
+def saved_queries() -> list[QueryLog]:
+    with Session(get_engine()) as session:
+        return list(session.scalars(select(QueryLog).order_by(QueryLog.id)))
 
 
 def test_ask_returns_answer_with_sources(client):
@@ -95,3 +107,33 @@ def test_index_serves_chat_ui(client):
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/html")
     assert "Kurumsal AI Asistanı" in response.text
+
+
+def test_ask_is_saved_to_database(client):
+    client.post("/ask", json={"question": "Yurt dışı harcırah?"})
+    [row] = saved_queries()
+    assert (row.endpoint, row.status, row.question) == ("ask", "ok", "Yurt dışı harcırah?")
+    assert row.answer == "75 Euro [1]" and row.answer_type == "answered"
+
+
+def test_agent_endpoint_runs_tools_and_saves_history(client, monkeypatch):
+    model = ScriptedToolModel([
+        AIMessage(content="", tool_calls=[tool_call("get_exchange_rate", {"base": "EUR"})]),
+        AIMessage(content="1 EUR = 50 TL"),
+    ])
+    app.dependency_overrides[agent_llm_dependency] = lambda: model
+    # Gerçek kur servisine gitmesin: aracın içindeki fonksiyonu sahtesiyle değiştir (test bitince geri alınır)
+    monkeypatch.setattr(tools_module.get_exchange_rate, "func", lambda base, target="TRY": f"1 {base} = 50 {target}")
+
+    body = client.post("/agent", json={"question": "Euro kaç TL?"}).json()
+    assert body["answer"] == "1 EUR = 50 TL"
+    assert [s["tool"] for s in body["steps"]] == ["get_exchange_rate"]
+    assert body["cost_usd"] == 0  # lokal model
+    [row] = saved_queries()
+    assert row.endpoint == "agent" and row.tools_used == ["get_exchange_rate"] and row.llm_calls == 2
+
+
+def test_responses_carry_request_id(client):
+    response = client.get("/health")
+    # Middleware her cevaba benzersiz bir istek kimliği ekler (loglarda aynı id ile aranabilir)
+    assert len(response.headers["X-Request-ID"]) == 12

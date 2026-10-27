@@ -3,6 +3,7 @@
 import pytest
 
 from app.config import get_settings
+from app.db import get_engine
 
 
 # autouse=True: bu fixture her testte, testin istemesine gerek kalmadan otomatik çalışır.
@@ -10,7 +11,7 @@ from app.config import get_settings
 def isolated_settings(monkeypatch, tmp_path):
     """Testleri geliştiricinin .env ayarlarından bağımsız kılar.
 
-    - İstek logu her testte geçici bir dosyaya yazılır (gerçek logs/ kirlenmez).
+    - İstek logu ve veritabanı her testte geçici dosyalardır (gerçek logs/ ve data/app.db kirlenmez).
     - Groundedness hakemi varsayılan olarak kapalı: testlerin çoğu sahte bir sohbet
       modeli kullanır ve o model hakem olarak (yapılandırılmış çıktı) çalışamaz.
       Hakemi test eden testler onu `check_grounding=True` ile açıkça açar.
@@ -20,9 +21,13 @@ def isolated_settings(monkeypatch, tmp_path):
     # İstek logu gerçek logs/ klasörüne değil, teste özel geçici bir dosyaya yazılsın
     monkeypatch.setenv("REQUEST_LOG_PATH", str(tmp_path / "requests.jsonl"))
     monkeypatch.setenv("AGENT_LOG_PATH", str(tmp_path / "agent.jsonl"))
+    # Her test kendi geçici SQLite veritabanını kullanır (gerçek data/app.db'ye dokunulmaz)
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'test.db'}")
     # get_settings lru_cache'li: önceki bir okumadan kalan nesneyi temizle ki yeni değer okunsun
     get_settings.cache_clear()
+    get_engine.cache_clear()  # Motor da yeni DATABASE_URL ile oluşturulsun
     yield
     # Test bitti: monkeypatch ortam değişkenini geri alır; cache'i de temizle ki
     # sonraki kod (veya test) gerçek ayarları okusun
     get_settings.cache_clear()
+    get_engine.cache_clear()

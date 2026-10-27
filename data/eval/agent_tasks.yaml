@@ -28,3 +28,16 @@ tasks:
     question: "Yurt dışında 3 günlük bir iş seyahatinde toplam yemek harcırahım kaç TL eder?"
     expected_tools: [search_documents, get_exchange_rate]
     must_contain: ["225|3 ×|3 x|3x"]
+  # Faz 4.3 — SQL (çalışan verisi) + vektör arama (kurallar) birlikte
+  - id: a13
+    question: "Ayşe Yılmaz'ın yıllık izin hakkı kaç gün?"
+    expected_tools: [query_employees, search_documents]
+    must_contain: ["20"]
+  - id: a14
+    question: "Can Öztürk bu yıl kaç gün daha yıllık izin kullanabilir?"
+    expected_tools: [query_employees, search_documents]
+    must_contain: ["0 gün|hiç|kalmadı|kalmamış|tamamını"]
+  - id: a15
+    question: "İzmir ofisinde kaç çalışan var?"
+    expected_tools: [query_employees]
+    must_contain: ["2|iki"]

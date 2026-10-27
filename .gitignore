@@ -12,6 +12,7 @@ logs/
 
 # Veri
 data/chroma/
+data/app.db
 data/pdfs/*
 !data/pdfs/.gitkeep
 

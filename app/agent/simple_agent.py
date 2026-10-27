@@ -9,6 +9,8 @@ Akış:
 duysa bile çağıramaz — bu sınırlama Faz 3.4'teki LangGraph döngüsüyle kalkıyor.
 """
 
+import logging
+
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, BaseMessage, ToolMessage
 from langchain_core.tools import BaseTool
@@ -19,6 +21,9 @@ from app.config import get_settings
 from app.llm import get_agent_llm
 from app.observability import TokenUsage, timer
 from app.prompts.loader import load_prompt
+
+
+logger = logging.getLogger("app.agent")
 
 
 class ToolStep(BaseModel):
@@ -76,6 +81,10 @@ def run_tool_calls(message: AIMessage, tools: list[BaseTool]) -> tuple[list[Tool
         # tool_call_id: sonucun hangi çağrıya ait olduğunu modele söyler (birden fazla çağrıda şart)
         tool_messages.append(ToolMessage(content=result, tool_call_id=call["id"], name=call["name"]))
         steps.append(ToolStep(tool=call["name"], args=call["args"], result=result[:500], ms=t["ms"]))
+        # Her araç çağrısı DEBUG; araç hata döndürdüyse WARNING (agent çalışmaya devam eder)
+        level = logging.WARNING if result.startswith("HATA") else logging.DEBUG
+        logger.log(level, "tool_call", extra={"tool": call["name"], "tool_args": call["args"], "duration_ms": t["ms"],
+                                              "result_preview": result[:200]})
     return tool_messages, steps
 
 
